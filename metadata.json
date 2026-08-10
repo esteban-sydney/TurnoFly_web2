@@ -1,0 +1,6 @@
+{
+  "name": "TurnoFly",
+  "description": "Gestión inteligente de turnos laborales desde Excel, calendario personal con alertas de conflicto y modo supervisor jefatura.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
