@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   X,
   Settings,
   Moon,
   Sun,
-  Globe,
   Download,
   Upload,
   Trash2,
   RotateCcw,
-  CheckCircle2,
-  AlertCircle,
   Database,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
+import { buttonMotion } from '../utils/motionVariants';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -221,16 +220,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Trash2 className="w-4 h-4" />
             </button>
 
-            <button
+            <motion.button
               onClick={() => {
                 onConfirmResetApp();
                 onClose();
               }}
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
               className="w-full py-2.5 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-600 hover:text-white text-rose-700 dark:text-rose-300 font-bold flex items-center justify-between cursor-pointer border border-rose-200 dark:border-rose-800 transition-colors"
             >
               <span>{getTranslation(lang, 'resetAppBtn')}</span>
               <RotateCcw className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
 

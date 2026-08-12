@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Upload,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
+import { FileStore } from '../utils/fileStore';
 
 interface EvidenceModalProps {
   isOpen: boolean;
@@ -24,10 +25,42 @@ export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose })
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    const createdUrls: string[] = [];
+
+    const loadPreviewUrls = async () => {
+      const nextUrls: Record<string, string> = {};
+      await Promise.all(
+        evidence.map(async (ev) => {
+          if (!ev.storageKey) return;
+          const file = await FileStore.getFile(ev.storageKey);
+          if (!file) return;
+          const url = URL.createObjectURL(file);
+          createdUrls.push(url);
+          nextUrls[ev.id] = url;
+        })
+      );
+      if (isMounted) {
+        setPreviewUrls(nextUrls);
+      }
+    };
+
+    loadPreviewUrls();
+
+    return () => {
+      isMounted = false;
+      createdUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [isOpen, evidence]);
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -45,17 +78,25 @@ export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose })
       return;
     }
 
-    const previewUrl = isImg ? URL.createObjectURL(file) : undefined;
+    const id = `evd_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const fileSizeMb = parseFloat((file.size / (1024 * 1024)).toFixed(2));
 
-    addEvidence({
-      fileName: file.name,
-      fileSizeMb,
-      fileType: isPdf ? 'pdf' : 'image',
-      uploadDate: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
-      previewUrl,
-      extractedNotes: 'Documento procesado localmente. Lectura de cuadrante confirmada.',
-    });
+    try {
+      await FileStore.saveFile(id, file);
+      addEvidence({
+        id,
+        fileName: file.name,
+        fileSizeMb,
+        fileType: isPdf ? 'pdf' : 'image',
+        uploadDate: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
+        storageKey: id,
+        extractedNotes: 'Documento guardado localmente en este navegador.',
+      });
+    } catch (error) {
+      console.error('Error saving evidence file:', error);
+      setErrorMessage('No se pudo guardar la evidencia en este navegador.');
+      return;
+    }
 
     setSuccessMessage('¡Evidencia de horario cargada exitosamente!');
   };
@@ -64,6 +105,17 @@ export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose })
     if (e.target.files && e.target.files[0]) {
       handleFileUpload(e.target.files[0]);
     }
+  };
+
+  const handleDeleteEvidence = async (id: string, storageKey?: string) => {
+    if (storageKey) {
+      try {
+        await FileStore.deleteFile(storageKey);
+      } catch (error) {
+        console.error('Error deleting evidence file:', error);
+      }
+    }
+    deleteEvidence(id);
   };
 
   return (
@@ -157,13 +209,26 @@ export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose })
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => deleteEvidence(ev.id)}
-                      className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors cursor-pointer"
-                      title="Eliminar evidencia"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {previewUrls[ev.id] && (
+                        <a
+                          href={previewUrls[ev.id]}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-2 rounded-xl text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-950 transition-colors cursor-pointer"
+                          title="Ver evidencia"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </a>
+                      )}
+                      <button
+                        onClick={() => handleDeleteEvidence(ev.id, ev.storageKey)}
+                        className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors cursor-pointer"
+                        title="Eliminar evidencia"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

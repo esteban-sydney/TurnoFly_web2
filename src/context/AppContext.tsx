@@ -30,6 +30,8 @@ interface AppContextType {
   setUserRole: (role: UserRole) => void;
   setActiveWorkerId: (id: string | undefined) => void;
   setActiveYearMonth: (year: number, month: number) => void;
+  setLastActiveView: (view: 'home' | 'shifts' | 'personal' | 'supervisor') => void;
+  markSplashSeen: () => void;
   
   // Data mutations
   loadImportedWorkers: (
@@ -51,11 +53,9 @@ interface AppContextType {
   addPersonalEvent: (event: Omit<PersonalEvent, 'id'>) => void;
   updatePersonalEvent: (event: PersonalEvent) => void;
   deletePersonalEvent: (eventId: string) => void;
-  suspendConflict: (conflictId: string) => void;
-  restoreConflict: (conflictId: string) => void;
   
   // Evidence
-  addEvidence: (item: Omit<HorarioEvidence, 'id'>) => void;
+  addEvidence: (item: HorarioEvidence) => void;
   deleteEvidence: (id: string) => void;
   
   // Resets
@@ -79,18 +79,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return synced;
       }
     }
-    const fresh = syncWorkersShiftTimes(generateSampleDemoWorkers());
-    StorageService.saveWorkers(fresh);
-    return fresh;
+    return [];
   });
   const [events, setEvents] = useState<PersonalEvent[]>(() => StorageService.getEvents());
   const [evidence, setEvidence] = useState<HorarioEvidence[]>(() => StorageService.getEvidence());
 
   const [activeYear, setActiveYear] = useState<number>(() => {
-    return workers[0]?.referenceYear || 2026;
+    return settings.referenceYear || workers[0]?.referenceYear || new Date().getFullYear();
   });
   const [activeMonth, setActiveMonth] = useState<number>(() => {
-    return workers[0]?.referenceMonth || 8;
+    return settings.referenceMonth || workers[0]?.referenceMonth || new Date().getMonth() + 1;
   });
 
   // Sync dark/light theme class to document Element
@@ -119,6 +117,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [settings]);
 
   // Sync state changes to storage
+  useEffect(() => {
+    StorageService.saveSettings(settings);
+  }, [settings]);
+
   useEffect(() => {
     StorageService.saveWorkers(workers);
   }, [workers]);
@@ -165,6 +167,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const setActiveYearMonth = (year: number, month: number) => {
     setActiveYear(year);
     setActiveMonth(month);
+    setSettings((prev) => ({
+      ...prev,
+      referenceYear: year,
+      referenceMonth: month,
+    }));
+  };
+
+  const setLastActiveView = (view: 'home' | 'shifts' | 'personal' | 'supervisor') => {
+    setSettings((prev) => ({
+      ...prev,
+      activeView: view,
+    }));
+  };
+
+  const markSplashSeen = () => {
+    setSettings((prev) => ({
+      ...prev,
+      hasSeenSplash: true,
+    }));
   };
 
   const loadImportedWorkers = (
@@ -308,26 +329,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setEvents((prev) => prev.filter((evt) => evt.id !== eventId));
   };
 
-  const suspendConflict = (conflictId: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      dismissedConflicts: [...prev.dismissedConflicts, conflictId],
-    }));
-  };
-
-  const restoreConflict = (conflictId: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      dismissedConflicts: prev.dismissedConflicts.filter((id) => id !== conflictId),
-    }));
-  };
-
-  const addEvidence = (item: Omit<HorarioEvidence, 'id'>) => {
-    const newItem: HorarioEvidence = {
-      ...item,
-      id: `evd_${Date.now()}`,
-    };
-    setEvidence((prev) => [newItem, ...prev]);
+  const addEvidence = (item: HorarioEvidence) => {
+    setEvidence((prev) => [item, ...prev]);
   };
 
   const deleteEvidence = (id: string) => {
@@ -379,14 +382,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setUserRole,
         setActiveWorkerId,
         setActiveYearMonth,
+        setLastActiveView,
+        markSplashSeen,
         loadImportedWorkers,
         updateDayShift,
         updateShiftDefinition,
         addPersonalEvent,
         updatePersonalEvent,
         deletePersonalEvent,
-        suspendConflict,
-        restoreConflict,
         addEvidence,
         deleteEvidence,
         clearShiftsOnly,

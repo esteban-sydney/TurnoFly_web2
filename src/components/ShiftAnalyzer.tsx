@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
+import { motion } from 'motion/react';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  Edit3,
+  ChevronDown,
   Share2,
   Copy,
   Check,
@@ -21,8 +22,6 @@ import {
   FileText,
   Users,
   CheckCircle2,
-  LayoutGrid,
-  ListFilter,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
@@ -53,7 +52,6 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [calendarViewMode, setCalendarViewMode] = useState<'cellular' | 'agenda'>('cellular');
   const [shareSuccessNotification, setShareSuccessNotification] = useState<string | null>(null);
 
   // Edit Single Day Shift Modal State
@@ -302,20 +300,6 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
     }, 3000);
   };
 
-  // Compute shift counts for month summary strip
-  const monthShiftCounts = React.useMemo(() => {
-    if (!activeWorker || !activeWorker.shifts) return {};
-    const counts: Record<string, number> = {};
-    for (let d = 1; d <= daysInMonth; d++) {
-      const formattedMonth = activeMonth.toString().padStart(2, '0');
-      const formattedDay = d.toString().padStart(2, '0');
-      const dateStr = `${activeYear}-${formattedMonth}-${formattedDay}`;
-      const code = activeWorker.shifts[dateStr]?.rawCode || 'L';
-      counts[code] = (counts[code] || 0) + 1;
-    }
-    return counts;
-  }, [activeWorker, activeMonth, activeYear, daysInMonth]);
-
   return (
     <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-4 sm:py-8 space-y-4 sm:space-y-6 overflow-x-hidden w-full">
       
@@ -332,140 +316,137 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
         </div>
       )}
 
-      {/* Header Bar - Mobile Clean & Spacious */}
-      <div className="p-4 sm:p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-black text-xs uppercase tracking-widest">
-                <CalendarIcon className="w-3.5 h-3.5" />
-                <span>{getTranslation(lang, 'shiftAnalyzerTitle')}</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800">
-                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                <span>{monthNames[activeMonth - 1]} {activeYear}</span>
-              </span>
+      {/* Animated shift header */}
+      <motion.section
+        key={`shift-header-${activeWorker?.id || 'empty'}-${activeYear}-${activeMonth}`}
+        className="relative overflow-hidden p-4 pt-6 sm:p-6 sm:pt-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-indigo-100/60 dark:shadow-none"
+        initial={{ opacity: 0, y: -18, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: [0.94, 1.015, 1] }}
+        transition={{ duration: 0.65, ease: 'easeOut' }}
+      >
+        <div className="absolute inset-x-0 top-0 grid h-1.5 grid-cols-5" aria-hidden="true">
+          {['bg-indigo-600', 'bg-amber-400', 'bg-slate-700', 'bg-emerald-500', 'bg-sky-500'].map((color, index) => (
+            <motion.span
+              key={color}
+              className={color}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ delay: 0.08 + index * 0.07, duration: 0.35, ease: 'easeOut' }}
+            />
+          ))}
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <motion.div
+              className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-200 dark:shadow-indigo-950/40"
+              initial={{ rotate: -30, scale: 0.55 }}
+              animate={{ rotate: 0, scale: 1 }}
+              transition={{ delay: 0.18, type: 'spring', stiffness: 280, damping: 15 }}
+              whileHover={{ rotate: 10, scale: 1.08 }}
+              whileTap={{ rotate: -8, scale: 0.92 }}
+            >
+              <CalendarIcon className="w-5 h-5" />
+            </motion.div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-0.5">
+                {getTranslation(lang, 'shiftAnalyzerTitle')}
+              </p>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white break-words">
+                {activeWorker?.name || 'Calendario de Turnos'}
+              </h1>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-              {activeWorker?.name || 'Calendario de Turnos'}
-            </h1>
           </div>
 
           {/* Controls Cluster */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Worker Selector Dropdown */}
-            {workers.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800">
+            {/* Compact worker selector without repeating the active name */}
+            {workers.length > 1 && (
+              <motion.label
+                className="relative flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-950/70 transition-colors"
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+              >
                 <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="text-xs font-semibold">Cambiar trabajador</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <select
                   value={activeWorker?.id || ''}
                   onChange={(e) => setActiveWorkerId(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-indigo-900 dark:text-indigo-200 focus:outline-none cursor-pointer"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  aria-label="Cambiar trabajador activo"
                 >
                   {workers.map((w) => (
-                    <option key={w.id} value={w.id} className="text-slate-900 dark:bg-slate-900 dark:text-white">
+                    <option key={w.id} value={w.id}>
                       {w.name}
                     </option>
                   ))}
                 </select>
-              </div>
+              </motion.label>
             )}
 
             {/* Month Selector */}
-            <div className="flex items-center gap-0.5 bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-300/60 dark:border-slate-700 shadow-inner">
-              <button
+            <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/30 p-0.5 rounded-xl border border-amber-200 dark:border-amber-800">
+              <motion.button
                 onClick={handlePrevMonth}
-                className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-90"
+                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-amber-950/70 transition-colors cursor-pointer"
+                whileHover={{ x: -3, scale: 1.08 }}
+                whileTap={{ x: -6, scale: 0.88 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                title="Mes anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="px-2 text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              </motion.button>
+              <span className="px-2 text-xs font-black text-amber-950 dark:text-amber-100 uppercase tracking-wider">
                 {monthNames[activeMonth - 1].substring(0, 3)} {activeYear}
               </span>
-              <button
+              <motion.button
                 onClick={handleNextMonth}
-                className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-90"
+                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-amber-950/70 transition-colors cursor-pointer"
+                whileHover={{ x: 3, scale: 1.08 }}
+                whileTap={{ x: 6, scale: 0.88 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                title="Mes siguiente"
               >
                 <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* View Switcher: Celular vs Agenda */}
-            <div className="flex bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-300/60 dark:border-slate-700 shadow-inner">
-              <button
-                onClick={() => setCalendarViewMode('cellular')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
-                  calendarViewMode === 'cellular'
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-                title="Vista Cuadrícula Celular (Toda la pantalla)"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Celular</span>
-              </button>
-              <button
-                onClick={() => setCalendarViewMode('agenda')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
-                  calendarViewMode === 'agenda'
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-                title="Vista Lista Agenda"
-              >
-                <ListFilter className="w-3.5 h-3.5" />
-                <span>Lista</span>
-              </button>
+              </motion.button>
             </div>
 
             {/* Copy & Share Action Buttons */}
-            <button
+            <motion.button
               onClick={handleCopySummary}
-              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-xs flex items-center gap-1 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-95"
+              className="group p-2 sm:px-3 sm:py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-800"
               title="Copiar texto del mes"
+              whileHover={{ y: -3, rotate: -1 }}
+              whileTap={{ scale: 0.9, rotate: 3 }}
+              transition={{ type: 'spring', stiffness: 460, damping: 18 }}
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-6" />}
               <span className="hidden sm:inline">{copied ? '¡Copiado!' : 'Copiar'}</span>
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
               onClick={onOpenShareModal || handleShareCalendar}
               disabled={isExporting}
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="group px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+              whileHover={{ y: -3, scale: 1.03 }}
+              whileTap={{ scale: 0.9, rotate: -2 }}
+              transition={{ type: 'spring', stiffness: 460, damping: 18 }}
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-4 h-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-0.5 group-active:scale-75" />
               <span>{isExporting ? 'Procesando...' : 'Compartir'}</span>
-            </button>
+            </motion.button>
           </div>
         </div>
-
-        {/* Quick Shift Counts Pill Strip */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none pt-1 border-t border-slate-100 dark:border-slate-800">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 mr-1">
-            Resumen:
-          </span>
-          {Object.entries(monthShiftCounts).map(([code, count]) => {
-            const def = categorizeCode(code);
-            return (
-              <span
-                key={code}
-                className={`px-2 py-0.5 rounded-lg text-[11px] font-black shrink-0 border flex items-center gap-1 ${def.color}`}
-              >
-                <span>{code}:</span>
-                <span className="font-mono">{count}d</span>
-              </span>
-            );
-          })}
-        </div>
-      </div>
+      </motion.section>
 
       {/* Main Calendar View Container - Fits Single Phone Screen */}
       <div
         ref={calendarRef}
         className="p-3 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 w-full max-w-full overflow-x-hidden"
       >
-        {calendarViewMode === 'cellular' ? (
-          <div>
+        <div>
             {/* Guide hint */}
             <p className="text-[10px] font-bold text-center text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
               💡 Toca un día para ver detalle u horario de turno
@@ -544,94 +525,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                 })}
               </div>
             </div>
-          </div>
-        ) : (
-          /* Agenda / List View */
-          <div className="space-y-2">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Planilla Detallada - {monthNames[activeMonth - 1]} {activeYear}
-              </span>
-              <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400">
-                {daysInMonth} Días
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-              {Array.from({ length: daysInMonth }).map((_, idx) => {
-                const dayNum = idx + 1;
-                const formattedMonth = activeMonth.toString().padStart(2, '0');
-                const formattedDay = dayNum.toString().padStart(2, '0');
-                const dateStr = `${activeYear}-${formattedMonth}-${formattedDay}`;
-
-                const dateObj = new Date(activeYear, activeMonth - 1, dayNum);
-                const dayOfWeekName = daysShort[dateObj.getDay()];
-
-                const shift = activeWorker?.shifts?.[dateStr];
-                const code = shift?.rawCode || 'L';
-                const def = categorizeCode(code);
-
-                const today = new Date();
-                const isToday = activeYear === today.getFullYear() && activeMonth === (today.getMonth() + 1) && dayNum === today.getDate();
-
-                return (
-                  <div
-                    key={dateStr}
-                    onClick={() => handleOpenEdit(dateStr, shift)}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 hover:scale-[1.01] active:scale-95 relative ${
-                      isToday
-                        ? 'ring-2 ring-amber-400 dark:ring-amber-400 border-amber-400 bg-amber-500/10 shadow-md shadow-amber-500/20'
-                        : def.color
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Date Badge */}
-                      <div className={`w-10 h-10 rounded-xl border flex flex-col items-center justify-center shrink-0 ${
-                        isToday
-                          ? 'bg-amber-400 border-amber-500 text-slate-950 font-black shadow-xs'
-                          : 'bg-white/60 dark:bg-black/30 border-white/40 dark:border-black/20'
-                      }`}>
-                        <span className={`text-[9px] font-black uppercase ${isToday ? 'text-slate-900' : 'text-slate-500 dark:text-slate-300'}`}>
-                          {dayOfWeekName}
-                        </span>
-                        <span className={`text-sm font-black leading-none ${isToday ? 'text-slate-950 font-black' : 'text-slate-900 dark:text-white'}`}>
-                          {dayNum}
-                        </span>
-                      </div>
-
-                      {/* Shift Details */}
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          {isToday && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider animate-pulse">
-                              HOY
-                            </span>
-                          )}
-                          <span className="text-sm font-black uppercase tracking-tight">
-                            [{code}] {def.name}
-                          </span>
-                          {shift?.isRemote && (
-                            <Laptop className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" title="Teletrabajo Remoto" />
-                          )}
-                        </div>
-                        <p className="text-[11px] font-bold opacity-85 flex items-center gap-1 mt-0.5 font-mono">
-                          <Clock className="w-3 h-3" />
-                          <span>
-                            {(def?.isWorkDay ?? shift?.isWorkDay) && (def?.defaultStartTime || shift?.startTime) ? `${def?.defaultStartTime || shift?.startTime} - ${def?.defaultEndTime || shift?.endTime}` : 'Día Libre'}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <button className="p-1.5 rounded-xl bg-white/50 dark:bg-black/20 text-slate-700 dark:text-slate-200">
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
 
@@ -696,7 +590,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                     <option value="T">T - Tarde (16:00 - 24:00)</option>
                     <option value="N">N - Noche (00:00 - 08:00)</option>
                     <option value="D">D - Diferido (10:00 - 17:00)</option>
-                    <option value="L">L - Día Libre</option>
+                    <option value="L">L - D?a Libre</option>
                     <option value="A">A - Admin (08:45 - 17:00)</option>
                     <option value="AV">AV - Admin Viernes (08:45 - 16:45)</option>
                     <option value="MTV">MTV - Mañana Sala TV (07:00 - 15:00)</option>

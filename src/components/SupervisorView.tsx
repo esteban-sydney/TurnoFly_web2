@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Users,
   ChevronLeft,
@@ -10,7 +11,15 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
-import { categorizeCode, isRealPersonName } from '../utils/excelParser';
+import { categorizeCode } from '../utils/excelParser';
+import { buttonMotion, cardMotion, fadeInUp } from '../utils/motionVariants';
+
+const formatShiftCodeBadge = (code: string, count: number) => (
+  <span key={code} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-bold uppercase tracking-wide">
+    <span>{code}</span>
+    <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-indigo-600 text-white text-[10px] font-black">{count}</span>
+  </span>
+);
 
 export const SupervisorView: React.FC = () => {
   const { settings, workers, setActiveWorkerId } = useApp();
@@ -25,6 +34,18 @@ export const SupervisorView: React.FC = () => {
     const dd = String(today.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   });
+
+  useEffect(() => {
+    if (workers.length === 0) return;
+    const firstWorker = workers.find((w) => w.shifts && Object.keys(w.shifts).length > 0);
+    if (!firstWorker) return;
+
+    const shiftDates = Object.keys(firstWorker.shifts);
+    if (shiftDates.length === 0) return;
+    if (!shiftDates.includes(selectedDateStr)) {
+      setSelectedDateStr(shiftDates[0]);
+    }
+  }, [workers, selectedDateStr]);
 
   const selectedDate = new Date(selectedDateStr + 'T00:00:00');
   const selectedYear = selectedDate.getFullYear();
@@ -66,38 +87,54 @@ export const SupervisorView: React.FC = () => {
     const off: { workerName: string; workerId: string; shift: any; def: any }[] = [];
     const other: { workerName: string; workerId: string; shift: any; def: any }[] = [];
 
-    // Filter out shift header titles, legend rows, room names like "Mañana sala tv"
-    const realWorkers = workers.filter((w) => isRealPersonName(w.name));
+    const realWorkers = workers.filter((w) => typeof w.name === 'string' && w.name.trim().length > 0);
 
-      realWorkers.forEach((w) => {
-        const shift = w.shifts?.[selectedDateStr];
-        const rawCode = shift?.rawCode || 'L';
-        const def = categorizeCode(rawCode);
+    realWorkers.forEach((w) => {
+      const shift = w.shifts?.[selectedDateStr];
+      const rawCode = shift?.rawCode?.toString().trim().toUpperCase() || 'L';
+      const def = categorizeCode(rawCode);
+      const item = { workerName: w.name, workerId: w.id, shift, def };
 
-        const item = { workerName: w.name, workerId: w.id, shift, def };
+      if (!shift || !shift.isWorkDay || def.category === 'off' || def.category === 'vacation' || rawCode === 'L') {
+        off.push(item);
+      } else if (def.category === 'morning' || def.category === 'administrative') {
+        morning.push(item);
+      } else if (def.category === 'afternoon') {
+        afternoon.push(item);
+      } else if (def.category === 'night') {
+        night.push(item);
+      } else {
+        other.push(item);
+      }
+    });
 
-        if (!shift || !shift.isWorkDay || rawCode === 'L' || def.category === 'off' || def.category === 'vacation') {
-          off.push(item);
-        } else if (def.category === 'morning' || def.category === 'administrative') {
-          morning.push(item);
-        } else if (def.category === 'afternoon') {
-          afternoon.push(item);
-        } else if (def.category === 'night') {
-          night.push(item);
-        } else {
-          other.push(item);
-        }
-      });
-
-    // Sort lists alphabetically by worker name for clean, ordered presentation
-    morning.sort((a, b) => a.workerName.localeCompare(b.workerName));
-    afternoon.sort((a, b) => a.workerName.localeCompare(b.workerName));
-    night.sort((a, b) => a.workerName.localeCompare(b.workerName));
-    off.sort((a, b) => a.workerName.localeCompare(b.workerName));
-    other.sort((a, b) => a.workerName.localeCompare(b.workerName));
+    const sortByName = (a: { workerName: string }, b: { workerName: string }) => a.workerName.localeCompare(b.workerName);
+    morning.sort(sortByName);
+    afternoon.sort(sortByName);
+    night.sort(sortByName);
+    off.sort(sortByName);
+    other.sort(sortByName);
 
     return { morning, afternoon, night, off, other };
   }, [workers, selectedDateStr]);
+
+  const groupedShiftCodeCounts = React.useMemo(() => {
+    const countCodes = (items: { def: any; shift: any }[]) => {
+      return items.reduce<Record<string, number>>((acc, item) => {
+        const code = item.def?.code || item.shift?.rawCode || 'UNKNOWN';
+        acc[code] = (acc[code] || 0) + 1;
+        return acc;
+      }, {});
+    };
+
+    return {
+      night: countCodes(groupedShifts.night),
+      morning: countCodes(groupedShifts.morning),
+      afternoon: countCodes(groupedShifts.afternoon),
+      off: countCodes(groupedShifts.off),
+      other: countCodes(groupedShifts.other),
+    };
+  }, [groupedShifts]);
 
   const totalWorkingToday =
     groupedShifts.morning.length +
@@ -106,7 +143,12 @@ export const SupervisorView: React.FC = () => {
     groupedShifts.other.length;
 
   return (
-    <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 space-y-6">
+    <motion.div
+      className="max-w-5xl mx-auto px-3 sm:px-6 py-6 space-y-6"
+      initial="initial"
+      animate="animate"
+      variants={fadeInUp}
+    >
       
       {/* Supervisor Header */}
       <div className="p-5 sm:p-7 rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white shadow-xl space-y-4 border border-indigo-700/50">
@@ -131,37 +173,49 @@ export const SupervisorView: React.FC = () => {
 
           {/* Quick Date Control Bar */}
           <div className="flex items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-indigo-500/30 w-full sm:w-auto justify-between sm:justify-end">
-            <button
+            <motion.button
               onClick={() => handleStepDay(-1)}
               className="p-2 rounded-xl text-indigo-200 hover:text-white hover:bg-indigo-800/60 transition-colors cursor-pointer"
               title="Día Anterior"
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
             >
               <ChevronLeft className="w-5 h-5" />
-            </button>
+            </motion.button>
 
             {!isToday && (
-              <button
+              <motion.button
                 onClick={handleResetToday}
                 className="px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:bg-amber-300 transition-colors cursor-pointer"
+                whileHover={buttonMotion.whileHover}
+                whileTap={buttonMotion.whileTap}
+                transition={buttonMotion.transition}
               >
                 Hoy
-              </button>
+              </motion.button>
             )}
 
-            <input
+            <motion.input
               type="date"
               value={selectedDateStr}
               onChange={(e) => e.target.value && setSelectedDateStr(e.target.value)}
               className="bg-indigo-950 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl border border-indigo-700 focus:outline-none cursor-pointer"
+              whileHover={{ scale: 1.01 }}
+              whileFocus={{ scale: 1.01 }}
+              transition={buttonMotion.transition}
             />
 
-            <button
+            <motion.button
               onClick={() => handleStepDay(1)}
               className="p-2 rounded-xl text-indigo-200 hover:text-white hover:bg-indigo-800/60 transition-colors cursor-pointer"
               title="Día Siguiente"
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
             >
               <ChevronRight className="w-5 h-5" />
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -224,6 +278,9 @@ export const SupervisorView: React.FC = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Incluye Noche, Noche Longovilo, Entrante Noche Longovilo y Entrante Noche Viernes Longovilo
                 </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Object.entries(groupedShiftCodeCounts.night).map(([code, count]) => formatShiftCodeBadge(code, Number(count)))}
+                </div>
               </div>
             </div>
           </div>
@@ -233,10 +290,13 @@ export const SupervisorView: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {groupedShifts.night.map(({ workerName, workerId, shift, def }) => (
-                <div
+                <motion.div
                   key={workerId}
                   onClick={() => setActiveWorkerId(workerId)}
-                  className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between cursor-pointer hover:scale-[1.02] transition-transform"
+                  className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between cursor-pointer"
+                  whileHover={cardMotion.whileHover}
+                  whileTap={cardMotion.whileTap}
+                  transition={cardMotion.transition}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0">
@@ -254,7 +314,7 @@ export const SupervisorView: React.FC = () => {
                   <span className="px-2 py-0.5 rounded-md bg-indigo-200 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 text-[10px] font-black uppercase">
                     {def?.code || shift?.rawCode}
                   </span>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
@@ -277,6 +337,9 @@ export const SupervisorView: React.FC = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Incluye Mañana, Mañana Sala TV, Administrativos (Viernes, Longovilo), Diferidos y Presencial NOC
                 </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Object.entries(groupedShiftCodeCounts.morning).map(([code, count]) => formatShiftCodeBadge(code, Number(count)))}
+                </div>
               </div>
             </div>
           </div>
@@ -286,10 +349,13 @@ export const SupervisorView: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {groupedShifts.morning.map(({ workerName, workerId, shift, def }) => (
-                <div
+                <motion.div
                   key={workerId}
                   onClick={() => setActiveWorkerId(workerId)}
-                  className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/80 flex items-center justify-between cursor-pointer hover:scale-[1.02] transition-transform"
+                  className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/80 flex items-center justify-between cursor-pointer"
+                  whileHover={cardMotion.whileHover}
+                  whileTap={cardMotion.whileTap}
+                  transition={cardMotion.transition}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shrink-0">
@@ -307,7 +373,7 @@ export const SupervisorView: React.FC = () => {
                   <span className="px-2 py-0.5 rounded-md bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-100 text-[10px] font-black uppercase">
                     {def?.code || shift?.rawCode}
                   </span>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
@@ -330,6 +396,9 @@ export const SupervisorView: React.FC = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Incluye Turno Tarde (16:00 a 24:00) y Tarde Sala TV (15:00 a 23:00)
                 </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Object.entries(groupedShiftCodeCounts.afternoon).map(([code, count]) => formatShiftCodeBadge(code, Number(count)))}
+                </div>
               </div>
             </div>
           </div>
@@ -415,6 +484,6 @@ export const SupervisorView: React.FC = () => {
         </div>
 
       </div>
-    </div>
+    </motion.div>
   );
 };

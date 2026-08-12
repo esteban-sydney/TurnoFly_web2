@@ -1,14 +1,17 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Calendar, Plane, Moon, Sun, Globe, Settings, Users, User, Bell } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { Language } from '../types';
+import { buttonMotion, fadeInUp } from '../utils/motionVariants';
 
 interface HeaderProps {
   onOpenSettings: () => void;
   onOpenImport: () => void;
   activeView: 'home' | 'shifts' | 'personal' | 'supervisor';
   setActiveView: (view: 'home' | 'shifts' | 'personal' | 'supervisor') => void;
+  disableSupervisor?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,20 +19,29 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenImport,
   activeView,
   setActiveView,
+  disableSupervisor = false,
 }) => {
-  const { settings, setTheme, setUserRole, conflicts } = useApp();
+  const { settings, setTheme, setUserRole, events } = useApp();
   const lang = settings.language;
-  const activeConflicts = conflicts.filter((c) => !c.isSuspended);
+  const eventCount = events.length;
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md transition-colors px-3 sm:px-6 md:px-10 py-2.5 shrink-0 shadow-xs">
+    <motion.header
+      className="sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md transition-colors px-3 sm:px-6 md:px-10 py-2.5 shrink-0 shadow-xs"
+      initial="initial"
+      animate="animate"
+      variants={fadeInUp}
+    >
       
       {/* Responsive Row Container: Left to Right Alignment */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-7xl mx-auto">
         
         {/* Left Side: Brand Logo & Title */}
-        <div className="flex items-center justify-between w-full sm:w-auto">
-          <div className="flex items-center gap-2.5 cursor-pointer shrink-0" onClick={() => setActiveView('home')}>
+        <div
+          className="flex items-center justify-between w-full sm:w-auto"
+          onClick={() => setActiveView('home')}
+        >
+          <div className="flex items-center gap-2.5 cursor-pointer shrink-0">
             <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-tr from-indigo-600 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-md shadow-indigo-500/25 shrink-0">
               T
             </div>
@@ -44,45 +56,54 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Quick Controls for Mobile View (Right of Logo) */}
-          <div className="flex items-center gap-1.5 sm:hidden shrink-0">
-            {/* Conflict Bell */}
-            {activeConflicts.length > 0 && (
-              <button
+          <motion.div className="flex items-center gap-1.5 sm:hidden shrink-0">
+            {/* Appointment reminder bell */}
+            {eventCount > 0 && (
+              <motion.button
                 onClick={() => setActiveView('personal')}
-                className="relative p-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 animate-pulse cursor-pointer active:scale-90"
-                title={`${activeConflicts.length} conflictos`}
+                className="relative p-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 animate-pulse cursor-pointer"
+                title={`${eventCount} citas registradas`}
+                whileHover={buttonMotion.whileHover}
+                whileTap={buttonMotion.whileTap}
+                transition={buttonMotion.transition}
               >
                 <Bell className="w-4 h-4" />
                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
-                  {activeConflicts.length}
+                  {eventCount}
                 </span>
-              </button>
+              </motion.button>
             )}
 
             {/* Theme Toggle Button */}
-            <button
+            <motion.button
               onClick={() => setTheme(settings.theme === 'dark' ? 'light' : 'dark')}
               id="theme-toggle-mobile-btn"
-              className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-90 ${
+              className={`p-2 rounded-xl border transition-all cursor-pointer ${
                 settings.theme === 'dark'
                   ? 'bg-indigo-950 border-indigo-700 text-amber-300'
                   : 'bg-indigo-50 border-indigo-200 text-indigo-700'
               }`}
               title={getTranslation(lang, 'theme')}
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
             >
               {settings.theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
-            </button>
+            </motion.button>
 
             {/* Settings Button */}
-            <button
+            <motion.button
               onClick={onOpenSettings}
               id="settings-trigger-mobile-btn"
-              className="w-8 h-8 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center cursor-pointer shadow-xs active:scale-90"
+              className="w-8 h-8 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center cursor-pointer shadow-xs"
               title={getTranslation(lang, 'settings')}
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
             >
               <Settings className="w-4 h-4" />
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         </div>
 
         {/* Middle / Right Section: Role Switcher & Action Controls */}
@@ -90,65 +111,77 @@ export const Header: React.FC<HeaderProps> = ({
           
           {/* Role Toggle Switcher (Worker vs Supervisor) */}
           <div className="flex items-center p-0.5 rounded-xl bg-slate-200/70 dark:bg-slate-800/80 border border-slate-300/60 dark:border-slate-700 text-xs w-full sm:w-auto shadow-inner">
-            <button
+            <motion.button
               onClick={() => {
                 setUserRole('worker');
                 if (activeView === 'supervisor') setActiveView('home');
               }}
               id="role-worker-btn"
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 settings.userRole === 'worker'
                   ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
             >
               <User className="w-3.5 h-3.5 shrink-0" />
               <span>{getTranslation(lang, 'workerMode')}</span>
-            </button>
-            <button
-              onClick={() => {
-                setUserRole('supervisor');
-                setActiveView('supervisor');
-              }}
+            </motion.button>
+            <motion.button
+              onClick={() => !disableSupervisor && setActiveView('supervisor')}
               id="role-supervisor-btn"
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all ${
                 settings.userRole === 'supervisor'
                   ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : disableSupervisor
+                  ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-80'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
+              title={disableSupervisor ? 'Carga una planilla para activar modo Jefatura' : getTranslation(lang, 'supervisorMode')}
+              whileHover={!disableSupervisor ? buttonMotion.whileHover : undefined}
+              whileTap={!disableSupervisor ? buttonMotion.whileTap : undefined}
+              transition={buttonMotion.transition}
             >
               <Users className="w-3.5 h-3.5 shrink-0" />
               <span>{getTranslation(lang, 'supervisorMode')}</span>
-            </button>
+            </motion.button>
           </div>
 
           {/* Desktop Controls (Theme + Conflicts + Settings) */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
-            {/* Conflict Indicator Button */}
-            {activeConflicts.length > 0 && (
-              <button
+            {/* Appointment reminder bell */}
+            {eventCount > 0 && (
+              <motion.button
                 onClick={() => setActiveView('personal')}
-                id="conflict-notification-btn"
+                id="event-notification-btn"
                 className="relative p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 animate-pulse cursor-pointer shrink-0"
-                title={`${activeConflicts.length} conflictos detectados`}
+                title={`${eventCount} citas registradas`}
+                whileHover={buttonMotion.whileHover}
+                whileTap={buttonMotion.whileTap}
+                transition={buttonMotion.transition}
               >
                 <Bell className="w-4 h-4" />
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
-                  {activeConflicts.length}
+                  {eventCount}
                 </span>
-              </button>
+              </motion.button>
             )}
 
             {/* Theme Toggle Button */}
-            <button
+            <motion.button
               onClick={() => setTheme(settings.theme === 'dark' ? 'light' : 'dark')}
               id="theme-toggle-btn"
-              className={`flex items-center justify-center px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+              className={`flex items-center justify-center px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0 ${
                 settings.theme === 'dark'
                   ? 'bg-indigo-950/80 border-indigo-700 text-amber-300 hover:bg-indigo-900'
                   : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
               }`}
               title={getTranslation(lang, 'theme')}
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
             >
               {settings.theme === 'dark' ? (
                 <>
@@ -161,21 +194,24 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="ml-1.5">Noche</span>
                 </>
               )}
-            </button>
+            </motion.button>
 
             {/* Settings Button */}
-            <button
+            <motion.button
               onClick={onOpenSettings}
               id="settings-trigger-btn"
               className="w-9 h-9 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shadow-xs shrink-0"
               title={getTranslation(lang, 'settings')}
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
             >
               <Settings className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
 
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 };

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Splash } from './components/Splash';
 import { Header } from './components/Header';
@@ -10,16 +11,50 @@ import { ExcelImportModal } from './components/ExcelImportModal';
 import { EvidenceModal } from './components/EvidenceModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ShareImageModal } from './components/ShareImageModal';
-import { FloatingActionMenu } from './components/FloatingActionMenu';
-import { AlertTriangle, Trash2, RotateCcw, Home, Calendar, Clock, Users } from 'lucide-react';
+import { Trash2, RotateCcw, Home, Calendar, Clock, Users } from 'lucide-react';
 import { getTranslation } from './utils/i18n';
+import { buttonMotion } from './utils/motionVariants';
 
 function AppMain() {
-  const { settings, clearShiftsOnly, resetFullApp, setUserRole, conflicts } = useApp();
+  const { settings, clearShiftsOnly, resetFullApp, setUserRole, workers, setLastActiveView } = useApp();
   const lang = settings.language;
 
+  const canOpenSupervisor = workers.some((w) => Object.keys(w.shifts || {}).length > 0);
+
   // View Navigation State
-  const [activeView, setActiveView] = useState<'home' | 'shifts' | 'personal' | 'supervisor'>('home');
+  const [activeView, setActiveViewState] = useState<'home' | 'shifts' | 'personal' | 'supervisor'>(() => {
+    const initial = settings.activeView || 'home';
+    return initial === 'supervisor' && !canOpenSupervisor ? 'home' : initial;
+  });
+  const [focusedPersonalEventId, setFocusedPersonalEventId] = useState<string | null>(null);
+
+  const setActiveView = (view: 'home' | 'shifts' | 'personal' | 'supervisor') => {
+    const nextView = view === 'supervisor' && !canOpenSupervisor ? 'home' : view;
+    if (nextView === 'supervisor') {
+      setUserRole('supervisor');
+    } else if (settings.userRole === 'supervisor') {
+      setUserRole('worker');
+    }
+    setActiveViewState(nextView);
+    setLastActiveView(nextView);
+  };
+
+  const openPersonalEvent = (eventId: string) => {
+    setFocusedPersonalEventId(eventId);
+    setActiveView('personal');
+  };
+
+  useEffect(() => {
+    const nextView = settings.activeView || 'home';
+    const safeView = nextView === 'supervisor' && !canOpenSupervisor ? 'home' : nextView;
+    setActiveViewState(safeView);
+  }, [settings.activeView, canOpenSupervisor]);
+
+  useEffect(() => {
+    if (!canOpenSupervisor && activeView === 'supervisor') {
+      setActiveView('home');
+    }
+  }, [canOpenSupervisor, activeView]);
 
   // Modal States
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -30,6 +65,18 @@ function AppMain() {
   // Confirmation Dialog States
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [showResetAnimation, setShowResetAnimation] = useState(false);
+
+  const handleResetFullApp = () => {
+    resetFullApp();
+    setShowResetAnimation(true);
+    setConfirmResetOpen(false);
+    setActiveView('home');
+
+    window.setTimeout(() => {
+      setShowResetAnimation(false);
+    }, 1400);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors flex flex-col font-sans overflow-x-hidden w-full">
@@ -40,32 +87,79 @@ function AppMain() {
         onOpenImport={() => setIsImportOpen(true)}
         activeView={activeView}
         setActiveView={setActiveView}
+        disableSupervisor={!canOpenSupervisor}
       />
 
       {/* Main View Area */}
       <main className="flex-1 pb-24 w-full max-w-full overflow-x-hidden">
-        {activeView === 'home' && (
-          <HomeDashboard
-            onOpenImport={() => setIsImportOpen(true)}
-            onOpenEvidence={() => setIsEvidenceOpen(true)}
-            setActiveView={setActiveView}
-            onConfirmClearShifts={() => setConfirmClearOpen(true)}
-            onConfirmResetApp={() => setConfirmResetOpen(true)}
-          />
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          {activeView === 'home' && (
+            <motion.div
+              key="home"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -24 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            >
+              <HomeDashboard
+                onOpenImport={() => setIsImportOpen(true)}
+                onOpenPersonalEvent={openPersonalEvent}
+                setActiveView={setActiveView}
+                onConfirmClearShifts={() => setConfirmClearOpen(true)}
+                onConfirmResetApp={() => setConfirmResetOpen(true)}
+              />
+            </motion.div>
+          )}
 
-        {activeView === 'shifts' && <ShiftAnalyzer onOpenShareModal={() => setIsShareModalOpen(true)} />}
+          {activeView === 'shifts' && (
+            <motion.div
+              key="shifts"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -24 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            >
+              <ShiftAnalyzer onOpenShareModal={() => setIsShareModalOpen(true)} />
+            </motion.div>
+          )}
 
-        {activeView === 'personal' && <PersonalCalendar />}
+          {activeView === 'personal' && (
+            <motion.div
+              key="personal"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -24 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            >
+              <PersonalCalendar
+                focusedEventId={focusedPersonalEventId}
+                onFocusedEventHandled={() => setFocusedPersonalEventId(null)}
+              />
+            </motion.div>
+          )}
 
-        {activeView === 'supervisor' && <SupervisorView />}
+          {activeView === 'supervisor' && (
+            <motion.div
+              key="supervisor"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -24 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            >
+              <SupervisorView />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Persistent Bottom Navigation Bar for Instant Fluid Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 glass-nav px-3 py-2 flex items-center justify-around shadow-2xl">
-        <button
+        <motion.button
           onClick={() => setActiveView('home')}
-          className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all active:scale-90 cursor-pointer ${
+          whileHover={buttonMotion.whileHover}
+          whileTap={buttonMotion.whileTap}
+          transition={buttonMotion.transition}
+          className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all cursor-pointer ${
             activeView === 'home'
               ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
@@ -73,11 +167,14 @@ function AppMain() {
         >
           <Home className="w-5 h-5" />
           <span className="text-[10px] uppercase tracking-wider">Inicio</span>
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
           onClick={() => setActiveView('shifts')}
-          className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all active:scale-90 cursor-pointer ${
+          whileHover={buttonMotion.whileHover}
+          whileTap={buttonMotion.whileTap}
+          transition={buttonMotion.transition}
+          className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all cursor-pointer ${
             activeView === 'shifts'
               ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
@@ -85,11 +182,14 @@ function AppMain() {
         >
           <Calendar className="w-5 h-5" />
           <span className="text-[10px] uppercase tracking-wider">Mis Turnos</span>
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
           onClick={() => setActiveView('personal')}
-          className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all active:scale-90 cursor-pointer relative ${
+          whileHover={buttonMotion.whileHover}
+          whileTap={buttonMotion.whileTap}
+          transition={buttonMotion.transition}
+          className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all cursor-pointer relative ${
             activeView === 'personal'
               ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
@@ -97,26 +197,54 @@ function AppMain() {
         >
           <Clock className="w-5 h-5" />
           <span className="text-[10px] uppercase tracking-wider">Agenda</span>
-          {conflicts.filter(c => !c.isSuspended).length > 0 && (
-            <span className="absolute top-1 right-2.5 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-          )}
-        </button>
+        </motion.button>
 
-        <button
-          onClick={() => {
-            setUserRole('supervisor');
-            setActiveView('supervisor');
-          }}
-          className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all active:scale-90 cursor-pointer ${
+        <motion.button
+          onClick={() => setActiveView('supervisor')}
+          disabled={!canOpenSupervisor}
+          whileHover={canOpenSupervisor ? buttonMotion.whileHover : undefined}
+          whileTap={canOpenSupervisor ? buttonMotion.whileTap : undefined}
+          transition={buttonMotion.transition}
+          className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all ${
             activeView === 'supervisor'
               ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
-              : 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
+              : canOpenSupervisor
+              ? 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
+              : 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-70'
           }`}
         >
           <Users className="w-5 h-5" />
           <span className="text-[10px] uppercase tracking-wider">Jefatura</span>
-        </button>
+        </motion.button>
       </nav>
+
+      {showResetAnimation && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="rounded-[28px] bg-slate-900/95 border border-slate-700 shadow-2xl p-8 flex flex-col items-center gap-4 text-center"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: [0.95, 1.05, 1], opacity: 1, rotate: [0, 6, -6, 0] }}
+            transition={{ duration: 1.1, ease: 'easeInOut' }}
+          >
+            <motion.div
+              className="w-20 h-20 rounded-3xl bg-gradient-to-br from-rose-500 to-fuchsia-500 flex items-center justify-center shadow-xl"
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+            >
+              <RotateCcw className="w-10 h-10 text-white" />
+            </motion.div>
+            <div className="space-y-2">
+              <p className="text-sm text-slate-300">Reiniciando TurnoFly...</p>
+              <p className="text-lg font-bold text-white">¡Listo! La app está fresca otra vez.</p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Modals */}
       <ShareImageModal
@@ -201,11 +329,7 @@ function AppMain() {
                 {getTranslation(lang, 'cancel')}
               </button>
               <button
-                onClick={() => {
-                  resetFullApp();
-                  setConfirmResetOpen(false);
-                  setActiveView('home');
-                }}
+                onClick={handleResetFullApp}
                 className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer"
               >
                 {getTranslation(lang, 'confirmDelete')}
@@ -218,20 +342,46 @@ function AppMain() {
   );
 }
 
-export default function App() {
+function AppRoot() {
+  const { markSplashSeen } = useApp();
   const [showSplash, setShowSplash] = useState(true);
 
-  if (showSplash) {
-    return (
-      <AppProvider>
-        <Splash onFinish={() => setShowSplash(false)} />
-      </AppProvider>
-    );
-  }
+  const handleFinish = () => {
+    markSplashSeen();
+    setShowSplash(false);
+  };
 
   return (
+    <AnimatePresence mode="wait">
+      {showSplash ? (
+        <motion.div
+          key="splash"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -24, scale: 1.03 }}
+          transition={{ duration: 0.5, ease: 'easeInOut' }}
+        >
+          <Splash onFinish={handleFinish} />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="main"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+        >
+          <AppMain />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export default function App() {
+  return (
     <AppProvider>
-      <AppMain />
+      <AppRoot />
     </AppProvider>
   );
 }

@@ -87,6 +87,7 @@ export interface HorarioEvidence {
   fileType: 'image' | 'pdf';
   uploadDate: string;
   previewUrl?: string;
+  storageKey?: string;
   extractedNotes?: string;
 }
 
@@ -95,6 +96,8 @@ export interface AppSettings {
   language: Language;
   userRole: UserRole;
   activeWorkerId?: string;
+  activeView?: 'home' | 'shifts' | 'personal' | 'supervisor';
+  hasSeenSplash?: boolean;
   remindersEnabled: boolean;
   defaultRemoteMode: boolean;
   dismissedConflicts: string[]; // event IDs

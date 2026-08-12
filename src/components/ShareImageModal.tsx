@@ -409,33 +409,37 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
                   </div>
 
                   {/* Summary Metric Chips */}
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="p-3 rounded-2xl bg-slate-800/90 border border-slate-700 text-center">
-                      <span className="text-xs text-slate-300 font-bold uppercase tracking-wider block mb-1">
-                        Días Trabajados
+                      <span className="text-[11px] text-slate-300 font-bold uppercase tracking-wider block mb-1">
+                        Trabajo
                       </span>
-                      <span className="text-xl font-black text-white">{stats.workDays} días</span>
+                      <span className="text-2xl font-black text-white">{stats.workDays}</span>
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">días</span>
                     </div>
 
                     <div className="p-3 rounded-2xl bg-indigo-950/90 border border-indigo-700 text-center">
-                      <span className="text-xs text-indigo-300 font-bold uppercase tracking-wider block mb-1">
+                      <span className="text-[11px] text-indigo-300 font-bold uppercase tracking-wider block mb-1">
                         Teletrabajo
                       </span>
-                      <span className="text-xl font-black text-indigo-200">{stats.remoteDays} días</span>
+                      <span className="text-2xl font-black text-indigo-200">{stats.remoteDays}</span>
+                      <span className="text-[10px] text-indigo-400 uppercase tracking-wider">días</span>
                     </div>
 
                     <div className="p-3 rounded-2xl bg-amber-950/90 border border-amber-700 text-center">
-                      <span className="text-xs text-amber-300 font-bold uppercase tracking-wider block mb-1">
+                      <span className="text-[11px] text-amber-300 font-bold uppercase tracking-wider block mb-1">
                         Oficina
                       </span>
-                      <span className="text-xl font-black text-amber-200">{stats.officeDays} días</span>
+                      <span className="text-2xl font-black text-amber-200">{stats.officeDays}</span>
+                      <span className="text-[10px] text-amber-300 uppercase tracking-wider">días</span>
                     </div>
 
                     <div className="p-3 rounded-2xl bg-emerald-950/90 border border-emerald-700 text-center">
-                      <span className="text-xs text-emerald-300 font-bold uppercase tracking-wider block mb-1">
-                        Días Libres
+                      <span className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider block mb-1">
+                        Libres
                       </span>
-                      <span className="text-xl font-black text-emerald-200">{stats.offDays} días</span>
+                      <span className="text-2xl font-black text-emerald-200">{stats.offDays}</span>
+                      <span className="text-[10px] text-emerald-300 uppercase tracking-wider">días</span>
                     </div>
                   </div>
 

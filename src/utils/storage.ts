@@ -10,6 +10,8 @@ export const defaultSettings: AppSettings = {
   language: 'es',
   userRole: 'worker',
   activeWorkerId: undefined,
+  activeView: 'home',
+  hasSeenSplash: false,
   remindersEnabled: true,
   defaultRemoteMode: true,
   dismissedConflicts: [],

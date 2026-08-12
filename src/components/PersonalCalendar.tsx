@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Calendar as CalendarIcon,
   Plus,
   Trash2,
-  AlertTriangle,
-  Clock,
   CheckCircle2,
   BellOff,
   X,
@@ -15,23 +13,34 @@ import {
   Briefcase,
   ChevronLeft,
   ChevronRight,
-  LayoutGrid,
-  ListFilter,
-  Edit3,
+  CalendarPlus,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { PersonalEvent } from '../types';
+import {
+  addToDeviceCalendar,
+  buildGoogleCalendarUrl,
+  CalendarExportEvent,
+} from '../utils/calendarExport';
 
-export const PersonalCalendar: React.FC = () => {
+interface PersonalCalendarProps {
+  focusedEventId?: string | null;
+  onFocusedEventHandled?: () => void;
+}
+
+export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
+  focusedEventId,
+  onFocusedEventHandled,
+}) => {
   const {
     settings,
     events,
-    conflicts,
     addPersonalEvent,
     updatePersonalEvent,
     deletePersonalEvent,
-    suspendConflict,
     activeYear,
     activeMonth,
     setActiveYearMonth,
@@ -41,7 +50,6 @@ export const PersonalCalendar: React.FC = () => {
   const monthNames = getTranslation(lang, 'months');
   const daysShort = getTranslation(lang, 'daysShort'); // Lun, Mar, Mié, Jue, Vie, Sáb, Dom
 
-  const [calendarViewMode, setCalendarViewMode] = useState<'cellular' | 'agenda'>('cellular');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<PersonalEvent | null>(null);
 
@@ -56,7 +64,9 @@ export const PersonalCalendar: React.FC = () => {
   const [endTime, setEndTime] = useState('17:00');
   const [reminderMinutes, setReminderMinutes] = useState(30);
   const [notes, setNotes] = useState('');
-
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [calendarEventToExport, setCalendarEventToExport] = useState<CalendarExportEvent | null>(null);
+  const [isExportingCalendar, setIsExportingCalendar] = useState(false);
   const handleOpenAdd = (defaultDateStr?: string) => {
     setEditingEvent(null);
     setTitle('');
@@ -86,34 +96,142 @@ export const PersonalCalendar: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveEvent = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!focusedEventId) return;
+
+    const focusedEvent = events.find((event) => event.id === focusedEventId);
+    if (focusedEvent) {
+      const [eventYear, eventMonth] = focusedEvent.date.split('-').map(Number);
+      setActiveYearMonth(eventYear, eventMonth);
+      handleOpenEdit(focusedEvent);
+    }
+
+    onFocusedEventHandled?.();
+  }, [focusedEventId, events]);
+
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  };
+
+  const sendBrowserNotification = (message: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('TurnoFly', {
+        body: message,
+        icon: '/favicon.ico',
+      });
+    }
+  };
+
+  const showSaveNotification = async (eventTitle: string) => {
+    const message = `Recordatorio guardado para "${eventTitle}"`;
+    setSaveToast(message);
+    window.setTimeout(() => {
+      setSaveToast(null);
+      setCalendarEventToExport(null);
+    }, 10000);
+
+    if ('Notification' in window) {
+      if (Notification.permission === 'default') {
+        await requestNotificationPermission();
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!settings.remindersEnabled) return;
+
+    const now = Date.now();
+    const timers = events
+      .map((event) => {
+        const eventTime = new Date(`${event.date}T${event.startTime}:00`).getTime();
+        if (Number.isNaN(eventTime)) return undefined;
+
+        const reminderTime = eventTime - event.reminderMinutes * 60 * 1000;
+        const delay = reminderTime - now;
+        const maxTimeout = 2_147_483_647;
+
+        if (delay <= 0 || delay > maxTimeout) return undefined;
+
+        return window.setTimeout(() => {
+          sendBrowserNotification(`"${event.title}" comienza a las ${event.startTime}`);
+        }, delay);
+      })
+      .filter((timer): timer is number => typeof timer === 'number');
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [events, settings.remindersEnabled]);
+
+  const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !date) return;
 
+    const savedEventData = {
+      title: title.trim(),
+      type,
+      date,
+      startTime,
+      endTime,
+      reminderMinutes,
+      notes,
+    };
+
     if (editingEvent) {
-      updatePersonalEvent({
+      const updatedEvent: PersonalEvent = {
         ...editingEvent,
-        title,
-        type,
-        date,
-        startTime,
-        endTime,
-        reminderMinutes,
-        notes,
-      });
+        ...savedEventData,
+      };
+      updatePersonalEvent(updatedEvent);
+      setCalendarEventToExport(updatedEvent);
     } else {
-      addPersonalEvent({
-        title,
-        type,
-        date,
-        startTime,
-        endTime,
-        reminderMinutes,
-        notes,
+      addPersonalEvent(savedEventData);
+      setCalendarEventToExport({
+        ...savedEventData,
+        id: `calendar_${Date.now()}`,
       });
     }
 
+    await showSaveNotification(savedEventData.title);
+
     setIsModalOpen(false);
+  };
+
+  const handleAddToDeviceCalendar = async () => {
+    if (!calendarEventToExport || isExportingCalendar) return;
+
+    setIsExportingCalendar(true);
+    try {
+      const result = await addToDeviceCalendar(calendarEventToExport);
+      setCalendarEventToExport(null);
+      setSaveToast(
+        result === 'shared'
+          ? 'Evento enviado. Confirma la aplicación de calendario en tu teléfono.'
+          : 'Archivo de calendario descargado. Ábrelo para confirmar el evento.'
+      );
+      window.setTimeout(() => setSaveToast(null), 6000);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setSaveToast('No se pudo abrir el calendario del teléfono. Inténtalo nuevamente.');
+    } finally {
+      setIsExportingCalendar(false);
+    }
+  };
+
+  const handleAddToGoogleCalendar = () => {
+    if (!calendarEventToExport || isExportingCalendar) return;
+
+    try {
+      const googleCalendarUrl = buildGoogleCalendarUrl(calendarEventToExport);
+      window.open(googleCalendarUrl, '_blank', 'noopener,noreferrer');
+      setCalendarEventToExport(null);
+      setSaveToast('Google Calendar abierto. Confirma el evento para guardarlo.');
+      window.setTimeout(() => setSaveToast(null), 6000);
+    } catch {
+      setSaveToast('No se pudo abrir Google Calendar. Inténtalo nuevamente.');
+    }
   };
 
   const getTypeIcon = (t: PersonalEvent['type']) => {
@@ -152,29 +270,63 @@ export const PersonalCalendar: React.FC = () => {
     }
   };
 
-  const activeConflicts = conflicts.filter((c) => !c.isSuspended);
-
   return (
     <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-4 sm:py-8 space-y-4 sm:space-y-6 overflow-x-hidden w-full">
+      {saveToast && (
+        <div className="relative p-3.5 pr-10 rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-600/30 text-xs font-black flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in" role="status" aria-live="polite">
+          <div className="flex items-center gap-2 min-w-0">
+            <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
+            <span>{saveToast}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
+            {calendarEventToExport && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleAddToDeviceCalendar}
+                  disabled={isExportingCalendar}
+                  className="min-h-10 px-3 py-2 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-70"
+                >
+                  {isExportingCalendar ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CalendarPlus className="w-4 h-4" />
+                  )}
+                  <span>{isExportingCalendar ? 'Abriendo...' : 'Calendario del teléfono'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddToGoogleCalendar}
+                  disabled={isExportingCalendar}
+                  className="min-h-10 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-70"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Google Calendar</span>
+                </button>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSaveToast(null);
+              setCalendarEventToExport(null);
+            }}
+            className="absolute top-3 right-3 p-1 text-white/80 hover:text-white active:scale-90 transition-transform cursor-pointer"
+            aria-label="Cerrar aviso"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       
-      {/* Header Bar - Mobile Clean & Spacious (Identical to Mis Turnos) */}
+      {/* Calendar header */}
       <div className="p-4 sm:p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-black text-xs uppercase tracking-widest">
-                <CalendarIcon className="w-3.5 h-3.5" />
-                <span>{getTranslation(lang, 'personalCalendarTitle')}</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300/60 dark:border-indigo-800">
-                <Clock className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
-                <span>{monthNames[activeMonth - 1]} {activeYear}</span>
-              </span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-              Agenda Personal & Citas
-            </h1>
-          </div>
+          <h1 className="flex items-center gap-2 text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            <CalendarIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>Agenda Personal y Citas</span>
+          </h1>
 
           {/* Controls Cluster */}
           <div className="flex flex-wrap items-center gap-2">
@@ -197,34 +349,6 @@ export const PersonalCalendar: React.FC = () => {
               </button>
             </div>
 
-            {/* View Switcher: Celular vs Lista */}
-            <div className="flex bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-300/60 dark:border-slate-700 shadow-inner">
-              <button
-                onClick={() => setCalendarViewMode('cellular')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
-                  calendarViewMode === 'cellular'
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-                title="Vista Cuadrícula Celular"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Celular</span>
-              </button>
-              <button
-                onClick={() => setCalendarViewMode('agenda')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
-                  calendarViewMode === 'agenda'
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-                title="Vista Lista Citas"
-              >
-                <ListFilter className="w-3.5 h-3.5" />
-                <span>Lista</span>
-              </button>
-            </div>
-
             {/* Add Event Button */}
             <button
               onClick={() => handleOpenAdd()}
@@ -238,55 +362,14 @@ export const PersonalCalendar: React.FC = () => {
         </div>
       </div>
 
-      {/* Conflict Warnings Banner */}
-      {activeConflicts.length > 0 ? (
-        <div className="p-4 rounded-3xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 space-y-2.5 text-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 animate-bounce" />
-              <span className="font-extrabold text-amber-950 dark:text-amber-200 uppercase tracking-wider">
-                Cruces de Horarios ({activeConflicts.length})
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {activeConflicts.map((c) => (
-              <div
-                key={c.id}
-                className="p-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-amber-200 dark:border-amber-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
-              >
-                <div>
-                  <p className="font-bold text-slate-900 dark:text-slate-100">
-                    Cita <strong className="text-amber-900 dark:text-amber-300">"{c.eventTitle}"</strong> ({c.eventTime}) coincide con Turno <span className="font-extrabold text-indigo-600 dark:text-indigo-400">[{c.shiftCode}]</span> el <span className="font-semibold">{c.eventDate}</span>.
-                  </p>
-                </div>
-                <button
-                  onClick={() => suspendConflict(c.id)}
-                  className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-colors shrink-0 self-end sm:self-auto cursor-pointer"
-                >
-                  Ignorar
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 flex items-center gap-2.5 text-xs font-bold text-emerald-950 dark:text-emerald-200">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span>No hay choques de horario con tus turnos de trabajo.</span>
-        </div>
-      )}
-
       {/* Main Calendar Container */}
       <div className="p-3 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 w-full max-w-full overflow-x-hidden">
-        {calendarViewMode === 'cellular' ? (
-          <div>
-            <p className="text-[10px] font-bold text-center text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-              💡 Toca un día para agregar una cita personal
-            </p>
+        <div>
+          <p className="text-[10px] font-bold text-center text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+            💡 Toca un día para agregar una cita personal
+          </p>
 
-            <div className="w-full">
+          <div className="w-full">
               {/* Day Header Row starting Monday */}
               <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-2">
                 {daysShort.map((d: string) => (
@@ -372,69 +455,8 @@ export const PersonalCalendar: React.FC = () => {
                   );
                 })}
               </div>
-            </div>
           </div>
-        ) : (
-          /* List / Agenda View */
-          <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Lista Completa de Citas Personales - {monthNames[activeMonth - 1]} {activeYear}
-              </span>
-              <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400">
-                {events.length} Cita(s) Registrada(s)
-              </span>
-            </div>
-
-            {events.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {events.map((evt) => (
-                  <div
-                    key={evt.id}
-                    onClick={() => handleOpenEdit(evt)}
-                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 hover:border-indigo-500 transition-all cursor-pointer flex items-start justify-between gap-3 group"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shrink-0">
-                        {getTypeIcon(evt.type)}
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white leading-tight">
-                          {evt.title}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                          📅 {evt.date} ({evt.startTime} - {evt.endTime})
-                        </p>
-                        {evt.notes && (
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 line-clamp-1 italic">
-                            "{evt.notes}"
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <button className="p-1 rounded-lg text-slate-400 hover:text-indigo-600">
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-8 text-center space-y-2 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  No tienes citas personales programadas en este período.
-                </p>
-                <button
-                  onClick={() => handleOpenAdd()}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer inline-flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Agregar Primera Cita</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* ADD / EDIT EVENT MODAL */}

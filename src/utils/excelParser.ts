@@ -285,6 +285,10 @@ export function validateAndMapEntries(
     const formattedDay = effectiveDay.toString().padStart(2, '0');
     const dateStr = `${referenceYear}-${formattedMonth}-${formattedDay}`;
 
+    if (validShiftsMap[dateStr] && item.dayNumber > maxDaysInMonth) {
+      return;
+    }
+
     const def = categorizeCode(item.rawCode);
 
     const dayShift: DayShift = {
