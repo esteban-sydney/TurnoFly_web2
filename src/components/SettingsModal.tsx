@@ -10,10 +10,15 @@ import {
   Trash2,
   RotateCcw,
   Database,
+  Smartphone,
+  Share2,
+  PlusSquare,
+  CheckCircle2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { buttonMotion } from '../utils/motionVariants';
+import { usePwaInstall } from '../hooks/usePwaInstall';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -38,6 +43,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const lang = settings.language;
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [installStatus, setInstallStatus] = useState<string | null>(null);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const { canInstall, install, isInstalled, isIos, isSecureContext } = usePwaInstall();
 
   if (!isOpen) return null;
 
@@ -68,6 +76,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
       };
       reader.readAsText(file);
+    }
+  };
+
+  const handleInstall = async () => {
+    const result = await install();
+
+    if (result === 'accepted') {
+      setInstallStatus('Instalación iniciada. TurnoFly aparecerá en tu pantalla de inicio.');
+      setShowInstallHelp(false);
+    } else if (result === 'dismissed') {
+      setInstallStatus('Instalación cancelada. Puedes intentarlo nuevamente cuando quieras.');
+    } else {
+      setInstallStatus(null);
+      setShowInstallHelp(true);
     }
   };
 
@@ -170,6 +192,65 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 🇧🇷 Português
               </button>
             </div>
+          </div>
+
+          {/* Installable app section */}
+          <div className="space-y-3 p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800">
+            <div className="flex items-start gap-2.5">
+              <Smartphone className="w-4 h-4 mt-0.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white">Instalar TurnoFly</h4>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                  Úsala desde tu pantalla de inicio y en modo pantalla completa.
+                </p>
+              </div>
+            </div>
+
+            {isInstalled ? (
+              <div className="flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-3 py-2.5 text-emerald-700 dark:text-emerald-300 font-bold">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>TurnoFly ya está instalada</span>
+              </div>
+            ) : (
+              <motion.button
+                type="button"
+                onClick={handleInstall}
+                className="w-full min-h-10 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                whileHover={buttonMotion.whileHover}
+                whileTap={buttonMotion.whileTap}
+                transition={buttonMotion.transition}
+              >
+                <Smartphone className="w-4 h-4" />
+                <span>{canInstall ? 'Instalar ahora' : isIos ? 'Ver pasos para iPhone' : 'Cómo instalar'}</span>
+              </motion.button>
+            )}
+
+            {installStatus && (
+              <p className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300" role="status">
+                {installStatus}
+              </p>
+            )}
+
+            {showInstallHelp && isIos && (
+              <div className="space-y-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-indigo-200 dark:border-indigo-800 p-3 text-[11px] text-slate-700 dark:text-slate-300">
+                <p className="flex items-center gap-2">
+                  <Share2 className="w-4 h-4 text-sky-600 shrink-0" />
+                  En Safari, toca <strong>Compartir</strong>.
+                </p>
+                <p className="flex items-center gap-2">
+                  <PlusSquare className="w-4 h-4 text-indigo-600 shrink-0" />
+                  Elige <strong>Agregar a inicio</strong>.
+                </p>
+              </div>
+            )}
+
+            {showInstallHelp && !isIos && (
+              <p className="rounded-xl bg-white/80 dark:bg-slate-900/60 border border-indigo-200 dark:border-indigo-800 p-3 text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+                {isSecureContext
+                  ? 'En Chrome, abre el menú del navegador y selecciona “Instalar aplicación” o “Agregar a pantalla principal”.'
+                  : 'La instalación automática requiere una dirección HTTPS. Estará disponible al publicar TurnoFly en un servidor seguro.'}
+              </p>
+            )}
           </div>
 
           {/* Backup / Restore Section */}

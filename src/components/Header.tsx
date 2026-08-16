@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <motion.header
-      className="sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md transition-colors px-3 sm:px-6 md:px-10 py-2.5 shrink-0 shadow-xs"
+      className="app-safe-header sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md transition-colors px-3 sm:px-6 md:px-10 pb-2.5 shrink-0 shadow-xs"
       initial="initial"
       animate="animate"
       variants={fadeInUp}

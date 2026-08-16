@@ -9,10 +9,22 @@ import {
   ThemeMode,
   UserRole,
   DayShift,
+  ImportedWorkerMonth,
+  ShiftPeriod,
 } from '../types';
 import { StorageService, defaultSettings } from '../utils/storage';
 import { detectScheduleConflicts } from '../utils/conflictDetector';
-import { generateSampleDemoWorkers, COMMON_SHIFT_DEFINITIONS, isRealPersonName, syncWorkersShiftTimes } from '../utils/excelParser';
+import {
+  generateSampleDemoWorkers,
+  COMMON_SHIFT_DEFINITIONS,
+  hydrateShiftDefinitionsFromWorkers,
+  isRealPersonName,
+  syncWorkersShiftTimes,
+} from '../utils/excelParser';
+import {
+  mergeImportedWorkersForPeriod,
+  resolveImportedWorkerId,
+} from '../utils/workerImportMerge';
 
 interface AppContextType {
   settings: AppSettings;
@@ -23,6 +35,7 @@ interface AppContextType {
   conflicts: ConflictAlert[];
   activeYear: number;
   activeMonth: number;
+  availableShiftPeriods: ShiftPeriod[];
   
   // Actions
   setLanguage: (lang: Language) => void;
@@ -40,6 +53,7 @@ interface AppContextType {
     referenceYear?: number,
     referenceMonth?: number
   ) => void;
+  loadImportedWorkerMonths: (imports: ImportedWorkerMonth[]) => void;
   updateDayShift: (workerId: string, dateStr: string, updatedShift: Partial<DayShift>) => void;
   updateShiftDefinition: (
     code: string,
@@ -74,6 +88,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (saved && saved.length > 0) {
       const sanitized = saved.filter((w) => isRealPersonName(w.name));
       if (sanitized.length > 0) {
+        hydrateShiftDefinitionsFromWorkers(sanitized);
         const synced = syncWorkersShiftTimes(sanitized);
         StorageService.saveWorkers(synced);
         return synced;
@@ -148,6 +163,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return detectScheduleConflicts(events, activeWorker, settings.dismissedConflicts);
   }, [events, activeWorker, settings.dismissedConflicts]);
 
+  const availableShiftPeriods = useMemo<ShiftPeriod[]>(() => {
+    const periodKeys = new Set<string>();
+
+    workers.forEach((worker) => {
+      Object.keys(worker.shifts || {}).forEach((date) => {
+        const match = date.match(/^(\d{4})-(\d{2})-\d{2}$/);
+        if (match) periodKeys.add(`${match[1]}-${match[2]}`);
+      });
+    });
+
+    return Array.from(periodKeys)
+      .sort()
+      .map((period) => {
+        const [year, month] = period.split('-').map(Number);
+        return { year, month };
+      });
+  }, [workers]);
+
   const setLanguage = (lang: Language) => {
     setSettings((prev) => ({ ...prev, language: lang }));
   };
@@ -188,59 +221,83 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
+  const loadImportedWorkerMonths = (imports: ImportedWorkerMonth[]) => {
+    const validImports = imports
+      .map((item) => ({
+        ...item,
+        workers: item.workers.filter((worker) => isRealPersonName(worker.name)),
+      }))
+      .filter((item) => item.workers.length > 0);
+    if (validImports.length === 0) return;
+
+    let mergedWorkers = workers;
+    let selectedWorkerId: string | undefined;
+
+    validImports.forEach((item, index) => {
+      hydrateShiftDefinitionsFromWorkers(mergedWorkers);
+      const syncedWorkers = syncWorkersShiftTimes(item.workers);
+      const selectedImportedWorker =
+        syncedWorkers.find((worker) => worker.id === item.selectedWorkerId) || syncedWorkers[0];
+
+      if (index === 0) {
+        selectedWorkerId = resolveImportedWorkerId(
+          mergedWorkers,
+          syncedWorkers,
+          selectedImportedWorker?.id
+        );
+      }
+
+      mergedWorkers = mergeImportedWorkersForPeriod(
+        mergedWorkers,
+        syncedWorkers,
+        item.referenceYear,
+        item.referenceMonth,
+        index > 0
+          ? {
+              selectedImportedWorkerId: selectedImportedWorker?.id,
+              targetWorkerId: selectedWorkerId,
+            }
+          : undefined
+      );
+    });
+
+    const lastImport = validImports[validImports.length - 1];
+    const chosenId = selectedWorkerId || mergedWorkers[0]?.id;
+    const chosenWorker = mergedWorkers.find((worker) => worker.id === chosenId);
+    const lastChosenWorkerDate = Object.keys(chosenWorker?.shifts || {}).sort().at(-1);
+    const [targetYear, targetMonth] = lastChosenWorkerDate
+      ? lastChosenWorkerDate.split('-').map(Number)
+      : [lastImport.referenceYear, lastImport.referenceMonth];
+
+    hydrateShiftDefinitionsFromWorkers(mergedWorkers);
+    setWorkers(mergedWorkers);
+    setActiveYear(targetYear);
+    setActiveMonth(targetMonth);
+    setSettings((prev) => ({
+      ...prev,
+      activeWorkerId: chosenId,
+      referenceYear: targetYear,
+      referenceMonth: targetMonth,
+    }));
+  };
+
   const loadImportedWorkers = (
     newWorkers: WorkerProfile[],
     selectedWorkerId?: string,
     referenceYear?: number,
     referenceMonth?: number
   ) => {
-    const validNewWorkers = newWorkers.filter((nw) => isRealPersonName(nw.name));
+    const validNewWorkers = newWorkers.filter((worker) => isRealPersonName(worker.name));
     if (validNewWorkers.length === 0) return;
 
-    // Preserve manual overrides / notes from existing workers if reimporting
-    setWorkers((existingWorkers) => {
-      const existingMap = new Map<string, WorkerProfile>(
-        existingWorkers.map((w) => [w.name.toLowerCase().trim(), w])
-      );
-
-      return validNewWorkers.map((nw) => {
-        const existing = existingMap.get(nw.name.toLowerCase().trim());
-        if (!existing) return nw;
-
-        // Merge shifts: if existing shift on date was edited manually or has custom notes, preserve it
-        const mergedShifts = { ...nw.shifts };
-        Object.entries(existing.shifts).forEach(([dateStr, existingShift]) => {
-          if (existingShift.editedManually || existingShift.notes) {
-            mergedShifts[dateStr] = {
-              ...mergedShifts[dateStr],
-              ...existingShift,
-            };
-          }
-        });
-
-        return {
-          ...nw,
-          shifts: mergedShifts,
-        };
-      });
-    });
-
-    const chosenId = selectedWorkerId || (validNewWorkers.length > 0 ? validNewWorkers[0].id : undefined);
-
-    if (referenceYear && referenceMonth) {
-      setActiveYear(referenceYear);
-      setActiveMonth(referenceMonth);
-    } else if (newWorkers[0]?.referenceYear && newWorkers[0]?.referenceMonth) {
-      setActiveYear(newWorkers[0].referenceYear);
-      setActiveMonth(newWorkers[0].referenceMonth);
-    }
-
-    setSettings((prev) => ({
-      ...prev,
-      activeWorkerId: chosenId,
-      referenceYear: referenceYear || newWorkers[0]?.referenceYear || prev.referenceYear,
-      referenceMonth: referenceMonth || newWorkers[0]?.referenceMonth || prev.referenceMonth,
-    }));
+    loadImportedWorkerMonths([
+      {
+        workers: validNewWorkers,
+        selectedWorkerId,
+        referenceYear: referenceYear || validNewWorkers[0]?.referenceYear || activeYear,
+        referenceMonth: referenceMonth || validNewWorkers[0]?.referenceMonth || activeMonth,
+      },
+    ]);
   };
 
   const updateDayShift = (workerId: string, dateStr: string, updatedShift: Partial<DayShift>) => {
@@ -377,6 +434,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         conflicts,
         activeYear,
         activeMonth,
+        availableShiftPeriods,
         setLanguage,
         setTheme,
         setUserRole,
@@ -385,6 +443,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setLastActiveView,
         markSplashSeen,
         loadImportedWorkers,
+        loadImportedWorkerMonths,
         updateDayShift,
         updateShiftDefinition,
         addPersonalEvent,

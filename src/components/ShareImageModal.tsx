@@ -7,17 +7,11 @@ import {
   Copy,
   Check,
   Sparkles,
-  Calendar,
-  Building,
-  Laptop,
-  Clock,
-  Briefcase,
   AlertCircle,
   FileImage,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
-import { COMMON_SHIFT_DEFINITIONS } from '../utils/excelParser';
 import { sanitizeClonedDocForHtml2Canvas } from '../utils/html2canvasFix';
 
 interface ShareImageModalProps {
@@ -25,52 +19,32 @@ interface ShareImageModalProps {
   onClose: () => void;
 }
 
-// Helper to extract shift details and high-contrast color styles for share image card
-const getShiftDetailsForCard = (code: string, shift?: any) => {
-  const def = COMMON_SHIFT_DEFINITIONS[code];
-  const name = def?.name || (code === 'L' ? 'Día Libre' : `Turno ${code}`);
-  const startTime = shift?.startTime || def?.defaultStartTime || '';
-  const endTime = shift?.endTime || def?.defaultEndTime || '';
-  const isWork = shift?.isWorkDay ?? (def ? def.isWorkDay : code !== 'L');
-
-  let hoursLabel = '';
-  if (startTime && endTime) {
-    hoursLabel = `${startTime} - ${endTime}`;
-  } else if (isWork) {
-    hoursLabel = 'Jornada Laboral';
-  } else {
-    hoursLabel = 'Descanso / Libre';
-  }
-
-  // Vivid, solid high-contrast styles for generated PNG image
-  let cellBg = 'bg-slate-800 border-slate-700/80';
-  let badgeBg = 'bg-slate-600 text-white font-black';
-  let textColor = 'text-slate-200';
-
-  if (!isWork || code === 'L') {
-    cellBg = 'bg-emerald-950/80 border-emerald-600/70';
-    badgeBg = 'bg-emerald-500 text-slate-950 font-black';
-    textColor = 'text-emerald-300';
+const getShiftColorForCard = (code: string) => {
+  if (code === 'L') {
+    return 'bg-emerald-50 border-emerald-300 text-emerald-800';
   } else if (['M', 'MTV', 'D'].includes(code)) {
-    cellBg = 'bg-sky-950/80 border-sky-600/70';
-    badgeBg = 'bg-sky-500 text-slate-950 font-black';
-    textColor = 'text-sky-300';
+    return 'bg-sky-50 border-sky-300 text-sky-800';
   } else if (['T', 'TTV'].includes(code)) {
-    cellBg = 'bg-amber-950/80 border-amber-600/70';
-    badgeBg = 'bg-amber-500 text-slate-950 font-black';
-    textColor = 'text-amber-300';
+    return 'bg-amber-50 border-amber-300 text-amber-900';
   } else if (['N', 'NLV', 'ENL', 'ENV'].includes(code)) {
-    cellBg = 'bg-purple-950/80 border-purple-600/70';
-    badgeBg = 'bg-purple-500 text-white font-black';
-    textColor = 'text-purple-300';
-  } else {
-    // Admin A, AV, ALV, OLV, X
-    cellBg = 'bg-indigo-950/80 border-indigo-600/70';
-    badgeBg = 'bg-indigo-500 text-white font-black';
-    textColor = 'text-indigo-300';
+    return 'bg-violet-50 border-violet-300 text-violet-800';
+  } else if (['A', 'AV', 'ALV', 'OLV'].includes(code)) {
+    return 'bg-indigo-50 border-indigo-300 text-indigo-800';
   }
 
-  return { name, startTime, endTime, hoursLabel, isWork, cellBg, badgeBg, textColor };
+  return 'bg-slate-50 border-slate-300 text-slate-800';
+};
+
+const dataUrlToPngBlob = (dataUrl: string): Blob => {
+  const encodedData = dataUrl.split(',')[1];
+  const bytes = window.atob(encodedData);
+  const buffer = new Uint8Array(bytes.length);
+
+  for (let index = 0; index < bytes.length; index++) {
+    buffer[index] = bytes.charCodeAt(index);
+  }
+
+  return new Blob([buffer], { type: 'image/png' });
 };
 
 export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClose }) => {
@@ -80,69 +54,11 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [copiedText, setCopiedText] = useState(false);
   const [shareSuccessMsg, setShareSuccessMsg] = useState<string | null>(null);
+  const [isShareWarning, setIsShareWarning] = useState(false);
 
   const daysInMonth = new Date(activeYear, activeMonth, 0).getDate();
   const firstDayOfWeek = (new Date(activeYear, activeMonth - 1, 1).getDay() + 6) % 7; // 0 = Mon
-
-  // Unique shift definitions used in this worker's month for the legend
-  const uniqueShiftsInMonth = React.useMemo(() => {
-    if (!activeWorker || !activeWorker.shifts) return [];
-    const map = new Map<string, { code: string; name: string; hoursLabel: string; isWork: boolean; badgeBg: string }>();
-
-    const formattedMonth = activeMonth.toString().padStart(2, '0');
-    for (let d = 1; d <= daysInMonth; d++) {
-      const formattedDay = d.toString().padStart(2, '0');
-      const dateStr = `${activeYear}-${formattedMonth}-${formattedDay}`;
-      const shift = activeWorker.shifts[dateStr];
-      const code = shift?.rawCode || 'L';
-
-      if (!map.has(code)) {
-        const info = getShiftDetailsForCard(code, shift);
-        map.set(code, {
-          code,
-          name: info.name,
-          hoursLabel: info.hoursLabel,
-          isWork: info.isWork,
-          badgeBg: info.badgeBg,
-        });
-      }
-    }
-
-    return Array.from(map.values());
-  }, [activeWorker, activeYear, activeMonth, daysInMonth]);
-
-  // Stats calculation
-  const stats = React.useMemo(() => {
-    if (!activeWorker || !activeWorker.shifts) {
-      return { totalHours: 0, remoteDays: 0, officeDays: 0, offDays: 0, workDays: 0 };
-    }
-    let totalHours = 0;
-    let remoteDays = 0;
-    let officeDays = 0;
-    let offDays = 0;
-    let workDays = 0;
-
-    const formattedMonth = activeMonth.toString().padStart(2, '0');
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const formattedDay = d.toString().padStart(2, '0');
-      const dateStr = `${activeYear}-${formattedMonth}-${formattedDay}`;
-      const shift = activeWorker.shifts[dateStr];
-
-      if (shift && shift.isWorkDay) {
-        workDays++;
-        totalHours += 8;
-        if (shift.isRemote) remoteDays++;
-        else officeDays++;
-      } else {
-        offDays++;
-      }
-    }
-
-    return { totalHours, remoteDays, officeDays, offDays, workDays };
-  }, [activeWorker, activeYear, activeMonth, daysInMonth]);
 
   // Generate Image from DOM
   const generateCardImage = async (): Promise<string | null> => {
@@ -155,9 +71,9 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
         scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#0f172a',
+        backgroundColor: '#f8fafc',
         logging: false,
-        width: 860,
+        width: 900,
         windowWidth: 1024,
         onclone: (clonedDoc) => {
           sanitizeClonedDocForHtml2Canvas(clonedDoc);
@@ -190,6 +106,7 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
     if (isOpen && activeWorker) {
       setPreviewImage(null);
       setShareSuccessMsg(null);
+      setIsShareWarning(false);
       // Delay slightly for font & DOM node rendering
       const timer = setTimeout(() => {
         generateCardImage();
@@ -200,103 +117,88 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  // Native Web Share Image with automatic download fallback
+  const showShareMessage = (message: string, isWarning = false) => {
+    setShareSuccessMsg(message);
+    setIsShareWarning(isWarning);
+    setTimeout(() => setShareSuccessMsg(null), isWarning ? 6000 : 3500);
+  };
+
+  const getImageFileName = () =>
+    `TurnoFly_${activeWorker?.name.replace(/\s+/g, '_')}_${monthNames[activeMonth - 1]}_${activeYear}.png`;
+
+  // Opens the native Android/iOS share sheet with the PNG already attached.
   const handleShareImage = async () => {
-    if (!activeWorker) return;
+    if (!activeWorker || !previewImage) return;
+
+    if (!window.isSecureContext) {
+      showShareMessage(
+        'Compartir directamente requiere abrir TurnoFly desde una dirección HTTPS segura.',
+        true
+      );
+      return;
+    }
+
+    if (!navigator.share) {
+      showShareMessage('Este navegador no ofrece el menú nativo para compartir archivos.', true);
+      return;
+    }
+
+    const file = new File([dataUrlToPngBlob(previewImage)], getImageFileName(), {
+      type: 'image/png',
+    });
+    const shareData: ShareData = {
+      title: `TurnoFly - ${activeWorker.name}`,
+      text: `Turnos de ${activeWorker.name} (${monthNames[activeMonth - 1]} ${activeYear})`,
+      files: [file],
+    };
+
+    if (navigator.canShare && !navigator.canShare(shareData)) {
+      showShareMessage('Tu navegador puede compartir, pero no permite adjuntar esta imagen PNG.', true);
+      return;
+    }
+
     try {
-      let dataUrl = previewImage;
-      if (!dataUrl) {
-        dataUrl = await generateCardImage();
-      }
-
-      if (!dataUrl) {
-        setShareSuccessMsg('⚠️ No se pudo generar la imagen. Intenta descargándola directamente.');
-        return;
-      }
-
-      const fileName = `TurnoFly_${activeWorker.name.replace(/\s+/g, '_')}_${monthNames[activeMonth - 1]}_${activeYear}.png`;
-
-      try {
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], fileName, { type: 'image/png' });
-
-        // Try Web Share API if supported
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: `TurnoFly - ${activeWorker.name}`,
-            text: `Planilla de turnos de ${activeWorker.name} (${monthNames[activeMonth - 1]} ${activeYear})`,
-            files: [file],
-          });
-          setShareSuccessMsg('¡Imagen PNG de turnos compartida!');
-          setTimeout(() => setShareSuccessMsg(null), 3500);
-          return;
-        }
-      } catch (shareErr) {
-        console.log('Web share API not permitted or cancelled, falling back to download', shareErr);
-      }
-
-      // Fallback: Direct download PNG file for WhatsApp/sharing
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setShareSuccessMsg('¡Imagen PNG descargada a tu celular/PC para enviar por WhatsApp!');
-      setTimeout(() => setShareSuccessMsg(null), 4000);
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        console.error('Share error:', err);
-        handleDownloadImage();
-      }
+      await navigator.share(shareData);
+      showShareMessage('Imagen compartida desde TurnoFly.');
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      console.error('Share error:', err);
+      showShareMessage('No se pudo abrir el menú para compartir en este navegador.', true);
     }
   };
 
   // Copy PNG Image directly to Clipboard
   const handleCopyImageToClipboard = async () => {
-    if (!activeWorker) return;
+    if (!activeWorker || !previewImage) return;
     try {
-      let dataUrl = previewImage;
-      if (!dataUrl) {
-        dataUrl = await generateCardImage();
-      }
-      if (!dataUrl) return;
-
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-
-      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      if (window.isSecureContext && navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        const blob = dataUrlToPngBlob(previewImage);
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob }),
         ]);
-        setShareSuccessMsg('¡Imagen de turnos copiada al portapapeles! Pégala en tu chat.');
-        setTimeout(() => setShareSuccessMsg(null), 3500);
+        showShareMessage('Imagen copiada. Ya puedes pegarla en tu chat.');
       } else {
-        // Fallback to download
-        handleDownloadImage();
+        showShareMessage('Copiar imágenes requiere abrir TurnoFly desde una dirección HTTPS.', true);
       }
     } catch (err) {
       console.error('Error copying image to clipboard:', err);
-      // Download fallback
-      handleDownloadImage();
+      showShareMessage('El navegador no permitió copiar la imagen.', true);
     }
   };
 
   // Download Image PNG
-  const handleDownloadImage = async () => {
-    let dataUrl = previewImage;
-    if (!dataUrl) {
-      dataUrl = await generateCardImage();
-    }
-    if (!dataUrl || !activeWorker) return;
+  const handleDownloadImage = () => {
+    if (!previewImage || !activeWorker) return;
 
+    const objectUrl = URL.createObjectURL(dataUrlToPngBlob(previewImage));
     const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `TurnoFly_${activeWorker.name.replace(/\s+/g, '_')}_${monthNames[activeMonth - 1]}_${activeYear}.png`;
+    link.href = objectUrl;
+    link.download = getImageFileName();
+    document.body.appendChild(link);
     link.click();
-    setShareSuccessMsg('¡Imagen PNG descargada con éxito!');
-    setTimeout(() => setShareSuccessMsg(null), 3500);
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+    showShareMessage('Solicitud de descarga enviada. Confirma “Descargar” en el navegador.');
   };
 
   return (
@@ -310,13 +212,13 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                <span>Tarjeta Visual de Turnos</span>
+                <span>Calendario para compartir</span>
                 <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2 py-0.5 rounded-full border border-indigo-500/30 uppercase tracking-wide">
                   Listo para Compartir
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Generado automáticamente para WhatsApp, Redes o Galería
+                Diseño simple con el día y el turno asignado
               </p>
             </div>
           </div>
@@ -331,8 +233,18 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
         {/* Modal Scrollable Content Area */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
           {shareSuccessMsg && (
-            <div className="p-3.5 rounded-2xl bg-emerald-950/80 text-emerald-200 border border-emerald-500/40 text-xs font-bold flex items-center gap-2.5 animate-fade-in shadow-lg">
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div
+              className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 animate-fade-in shadow-lg border ${
+                isShareWarning
+                  ? 'bg-amber-950/80 text-amber-200 border-amber-500/40'
+                  : 'bg-emerald-950/80 text-emerald-200 border-emerald-500/40'
+              }`}
+            >
+              {isShareWarning ? (
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+              ) : (
+                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+              )}
               <span>{shareSuccessMsg}</span>
             </div>
           )}
@@ -358,11 +270,11 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
                   <div className="space-y-2">
                     <img
                       src={previewImage}
-                      alt="Planilla de turnos card"
-                      className="w-full max-h-[380px] object-contain rounded-xl shadow-2xl border border-slate-800/80"
+                      alt="Calendario mensual con día y turno"
+                      className="w-full max-h-[480px] object-contain rounded-xl shadow-2xl border border-slate-800/80"
                     />
                     <p className="text-[11px] text-slate-400 font-medium">
-                      📸 Vista previa de alta resolución para enviar por celular
+                      Vista previa en alta resolución para compartir
                     </p>
                   </div>
                 ) : (
@@ -372,97 +284,58 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
                 )}
               </div>
 
+              {!window.isSecureContext && (
+                <p className="rounded-xl border border-amber-800/70 bg-amber-950/40 px-3 py-2.5 text-[11px] leading-relaxed text-amber-200">
+                  La app está abierta por una dirección local HTTP. El menú directo de Android/iOS se habilita al usar TurnoFly mediante HTTPS.
+                </p>
+              )}
+
               {/* TARGET CANVAS FOR HTML2CANVAS HIGH-RES CARD RENDERING */}
-              <div className="absolute top-0 left-0 -z-50 pointer-events-none opacity-0 overflow-hidden w-[860px]">
+              <div className="absolute top-0 left-0 -z-50 pointer-events-none opacity-0 overflow-hidden w-[900px]">
                 <div
                   ref={cardRef}
                   data-card-ref="true"
-                  className="w-[860px] bg-slate-900 text-white p-7 rounded-3xl border border-indigo-500/40 shadow-2xl space-y-6 font-sans"
+                  className="w-[900px] bg-slate-50 text-slate-900 p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-6 font-sans"
                 >
-                  {/* Card Header Branding */}
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-5">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-amber-400 flex items-center justify-center font-black text-2xl text-white shadow-lg shadow-indigo-500/30">
-                        TF
+                  <div className="flex items-center justify-between border-b-2 border-slate-200 pb-5">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center font-black text-3xl text-white shadow-md shrink-0">
+                        T
                       </div>
-                      <div>
-                        <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                          <span>TurnoFly</span>
-                          <span className="text-xs bg-amber-400/20 text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-400/30 uppercase tracking-wide">
-                            Planilla Oficial
-                          </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-black text-indigo-600 uppercase tracking-wider">TurnoFly</p>
+                        <h2 className="text-2xl font-black text-slate-950 leading-tight">
+                          {activeWorker.name}
                         </h2>
-                        <p className="text-sm text-slate-200 font-bold mt-0.5">
-                          {activeWorker.name} • {activeWorker.role || 'Operativo / Colaborador'}
-                        </p>
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <div className="text-2xl font-black text-amber-400 uppercase tracking-wide">
+                    <div className="text-right shrink-0 pl-5">
+                      <div className="text-3xl font-black text-slate-950 uppercase">
                         {monthNames[activeMonth - 1]} {activeYear}
                       </div>
-                      <p className="text-xs text-slate-300 font-semibold mt-0.5">
-                        Calendario de Turnos Rotativos
+                      <p className="text-sm text-slate-500 font-bold mt-1">
+                        Día y turno asignado
                       </p>
                     </div>
                   </div>
 
-                  {/* Summary Metric Chips */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 rounded-2xl bg-slate-800/90 border border-slate-700 text-center">
-                      <span className="text-[11px] text-slate-300 font-bold uppercase tracking-wider block mb-1">
-                        Trabajo
-                      </span>
-                      <span className="text-2xl font-black text-white">{stats.workDays}</span>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">días</span>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-7 gap-3 text-center text-sm font-black text-slate-600 uppercase">
+                      <span>Lu</span>
+                      <span>Ma</span>
+                      <span>Mi</span>
+                      <span>Ju</span>
+                      <span>Vi</span>
+                      <span>Sá</span>
+                      <span>Do</span>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-indigo-950/90 border border-indigo-700 text-center">
-                      <span className="text-[11px] text-indigo-300 font-bold uppercase tracking-wider block mb-1">
-                        Teletrabajo
-                      </span>
-                      <span className="text-2xl font-black text-indigo-200">{stats.remoteDays}</span>
-                      <span className="text-[10px] text-indigo-400 uppercase tracking-wider">días</span>
-                    </div>
-
-                    <div className="p-3 rounded-2xl bg-amber-950/90 border border-amber-700 text-center">
-                      <span className="text-[11px] text-amber-300 font-bold uppercase tracking-wider block mb-1">
-                        Oficina
-                      </span>
-                      <span className="text-2xl font-black text-amber-200">{stats.officeDays}</span>
-                      <span className="text-[10px] text-amber-300 uppercase tracking-wider">días</span>
-                    </div>
-
-                    <div className="p-3 rounded-2xl bg-emerald-950/90 border border-emerald-700 text-center">
-                      <span className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider block mb-1">
-                        Libres
-                      </span>
-                      <span className="text-2xl font-black text-emerald-200">{stats.offDays}</span>
-                      <span className="text-[10px] text-emerald-300 uppercase tracking-wider">días</span>
-                    </div>
-                  </div>
-
-                  {/* Monthly Shift Grid View */}
-                  <div className="space-y-2.5">
-                    {/* Weekday Labels */}
-                    <div className="grid grid-cols-7 gap-2.5 text-center text-xs font-black text-slate-300 uppercase tracking-wider bg-slate-950/80 py-2 rounded-xl border border-slate-800">
-                      <span>Lunes</span>
-                      <span>Martes</span>
-                      <span>Miércoles</span>
-                      <span>Jueves</span>
-                      <span>Viernes</span>
-                      <span>Sábado</span>
-                      <span>Domingo</span>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-2.5 text-xs">
-                      {/* Empty pad slots */}
+                    <div className="grid grid-cols-7 gap-3">
                       {Array.from({ length: firstDayOfWeek }).map((_, idx) => (
-                        <div key={`empty-${idx}`} className="h-[92px] rounded-2xl bg-slate-800/20 border border-slate-800/40" />
+                        <div key={`empty-${idx}`} className="h-[112px] rounded-xl bg-slate-100 border border-slate-200" />
                       ))}
 
-                      {/* Day cells */}
                       {Array.from({ length: daysInMonth }).map((_, idx) => {
                         const dayNum = idx + 1;
                         const formattedMonth = activeMonth.toString().padStart(2, '0');
@@ -470,37 +343,18 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
                         const dateStr = `${activeYear}-${formattedMonth}-${formattedDay}`;
 
                         const shift = activeWorker.shifts?.[dateStr];
-                        const code = shift?.rawCode || 'L';
-                        const isRemote = shift?.isRemote ?? false;
-                        const info = getShiftDetailsForCard(code, shift);
+                        const code = shift?.rawCode?.trim().toUpperCase() || '—';
+                        const colorClasses = getShiftColorForCard(code);
+                        const codeSize = code.length > 2 ? 'text-3xl' : 'text-5xl';
 
                         return (
                           <div
                             key={`card-day-${dayNum}`}
-                            className={`h-[92px] rounded-2xl p-2 flex flex-col justify-between border shadow-sm ${info.cellBg}`}
+                            className={`h-[112px] rounded-xl p-3 flex flex-col border-2 ${colorClasses}`}
                           >
-                            {/* Day Header: Day number + Location tag */}
-                            <div className="flex items-center justify-between w-full leading-none">
-                              <span className="font-black text-sm text-white">{dayNum}</span>
-                              {info.isWork ? (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-950/90 text-slate-100 border border-slate-700">
-                                  {isRemote ? '🏠 Casa' : '🏢 Ofic'}
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 px-1.5 py-0.5 rounded-full border border-emerald-700/50">🌴 Libre</span>
-                              )}
-                            </div>
-
-                            {/* CENTER: HIGH CONTRAST SHIFT CODE BADGE */}
-                            <div className="text-center my-auto flex items-center justify-center">
-                              <span className={`px-2.5 py-1 rounded-lg text-xs tracking-wider font-black shadow-sm ${info.badgeBg}`}>
-                                {code}
-                              </span>
-                            </div>
-
-                            {/* BOTTOM: TIME / SHORT NAME LABEL */}
-                            <div className="text-[11px] font-black text-center tracking-tight text-slate-100 leading-normal">
-                              {info.hoursLabel !== 'Descanso / Libre' ? info.hoursLabel : 'Libre'}
+                            <span className="text-xl leading-none font-black text-slate-700">{dayNum}</span>
+                            <div className="flex flex-1 items-center justify-center text-center">
+                              <span className={`${codeSize} leading-none font-black uppercase`}>{code}</span>
                             </div>
                           </div>
                         );
@@ -508,43 +362,9 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
                     </div>
                   </div>
 
-                  {/* SHIFT LEGEND / LEYENDA Y HORARIOS DE TURNOS */}
-                  <div className="p-4 rounded-2xl bg-slate-950/95 border border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between text-xs font-black text-amber-400 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-amber-400" />
-                        <span>Leyenda y Horarios de Turnos</span>
-                      </div>
-                      <span className="text-xs text-slate-300 font-bold normal-case">
-                        Códigos de este mes
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      {uniqueShiftsInMonth.map((item) => (
-                        <div
-                          key={`legend-${item.code}`}
-                          className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900 border border-slate-800/90 shadow-sm"
-                        >
-                          <span className={`px-3 py-1.5 rounded-xl font-black text-xs tracking-wider shrink-0 shadow-sm ${item.badgeBg}`}>
-                            {item.code}
-                          </span>
-                          <div className="min-w-0 flex-1 leading-normal">
-                            <div className="font-black text-white text-xs leading-snug">{item.name}</div>
-                            <div className="text-xs font-black text-amber-300 leading-snug">{item.hoursLabel}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Card Footer Branding */}
-                  <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-300 font-bold">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
-                      <span>Generado por <b className="text-white">TurnoFly</b></span>
-                    </div>
-                    <span>Planilla Personalizada • Guardado Offline</span>
+                  <div className="pt-1 flex items-center justify-between text-xs text-slate-500 font-bold">
+                    <span>TurnoFly</span>
+                    <span>Día / turno</span>
                   </div>
                 </div>
               </div>
@@ -576,11 +396,11 @@ export const ShareImageModal: React.FC<ShareImageModalProps> = ({ isOpen, onClos
 
             <button
               onClick={handleShareImage}
-              disabled={isGenerating || !activeWorker}
+              disabled={isGenerating || !activeWorker || !previewImage}
               className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-black text-xs shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
             >
               <Share2 className="w-4 h-4 text-white" />
-              <span>Compartir Imagen</span>
+              <span>Compartir desde TurnoFly</span>
             </button>
           </div>
         </div>

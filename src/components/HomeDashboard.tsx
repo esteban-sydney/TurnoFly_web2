@@ -132,36 +132,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* Action Cards Grid - Geometric Balance */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <motion.div
-            onClick={onOpenImport}
-            className="p-6 rounded-3xl glass-card border-2 border-dashed border-slate-300 dark:border-slate-700/80 shadow-md hover:shadow-xl hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer flex flex-col justify-between group active:scale-95"
-            whileHover={cardMotion.whileHover}
-            whileTap={cardMotion.whileTap}
-            transition={cardMotion.transition}
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
-                <FileSpreadsheet className="w-6 h-6" />
-              </div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Importar Planilla</p>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Importar Excel (.xlsx)</h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-                Carga tu cuadrante laboral para categorizar códigos M, T, N, L de forma automática.
-              </p>
-            </div>
-            <motion.button
-              onClick={onOpenImport}
-              className="w-full py-3 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md hover:bg-indigo-600"
-              whileHover={buttonMotion.whileHover}
-              whileTap={buttonMotion.whileTap}
-              transition={buttonMotion.transition}
-            >
-              <span>Seleccionar Archivo</span>
-              <ChevronRight className="w-4 h-4" />
-            </motion.button>
-          </motion.div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <motion.div
             className="p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-xl transition-all flex flex-col justify-between"
             whileHover={cardMotion.whileHover}

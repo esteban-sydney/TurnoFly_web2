@@ -131,6 +131,32 @@ export function categorizeCode(rawCode: string): ShiftCodeDefinition {
   return { code: clean, name: `Turno ${clean}`, category: 'other', defaultStartTime: '08:00', defaultEndTime: '16:00', isWorkDay: true, color: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-200 dark:border-indigo-700' };
 }
 
+export function hydrateShiftDefinitionsFromWorkers(workersList: WorkerProfile[]): void {
+  const hydratedCodes = new Set<string>();
+  const datedShifts = workersList
+    .flatMap((worker) => Object.entries(worker.shifts))
+    .sort(([leftDate, leftShift], [rightDate, rightShift]) => {
+      const manualOrder = Number(Boolean(leftShift.editedManually)) - Number(Boolean(rightShift.editedManually));
+      return manualOrder || leftDate.localeCompare(rightDate);
+    });
+
+  datedShifts.forEach(([, shift]) => {
+    const code = shift.rawCode?.trim().toUpperCase();
+    if (!code || hydratedCodes.has(code)) return;
+
+    const currentDefinition = categorizeCode(code);
+    COMMON_SHIFT_DEFINITIONS[code] = {
+      ...currentDefinition,
+      code,
+      category: shift.category,
+      defaultStartTime: shift.startTime ?? currentDefinition.defaultStartTime,
+      defaultEndTime: shift.endTime ?? currentDefinition.defaultEndTime,
+      isWorkDay: shift.isWorkDay,
+    };
+    hydratedCodes.add(code);
+  });
+}
+
 export function syncWorkersShiftTimes(workersList: WorkerProfile[]): WorkerProfile[] {
   if (!workersList || !Array.isArray(workersList)) return [];
   return workersList.map((worker) => {
@@ -141,11 +167,12 @@ export function syncWorkersShiftTimes(workersList: WorkerProfile[]): WorkerProfi
       const shift = updatedShifts[dateKey];
       if (shift && shift.rawCode) {
         const def = categorizeCode(shift.rawCode);
-        if (def && def.isWorkDay) {
+        if (def) {
           if (
             shift.startTime !== def.defaultStartTime ||
             shift.endTime !== def.defaultEndTime ||
-            shift.category !== def.category
+            shift.category !== def.category ||
+            shift.isWorkDay !== def.isWorkDay
           ) {
             updatedShifts[dateKey] = {
               ...shift,

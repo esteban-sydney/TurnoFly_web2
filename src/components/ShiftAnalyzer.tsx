@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { motion } from 'motion/react';
 import {
   Calendar as CalendarIcon,
+  CalendarRange,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -28,6 +29,7 @@ import { getTranslation } from '../utils/i18n';
 import { DayShift, ShiftCategory } from '../types';
 import { COMMON_SHIFT_DEFINITIONS, categorizeCode } from '../utils/excelParser';
 import { sanitizeClonedDocForHtml2Canvas } from '../utils/html2canvasFix';
+import { normalizeWorkerName } from '../utils/workerImportMerge';
 
 interface ShiftAnalyzerProps {
   onOpenShareModal?: () => void;
@@ -40,6 +42,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
     activeWorker,
     activeYear,
     activeMonth,
+    availableShiftPeriods,
     setActiveWorkerId,
     setActiveYearMonth,
     updateDayShift,
@@ -103,16 +106,59 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
 
   const monthNames = getTranslation(lang, 'months');
   const daysShort = getTranslation(lang, 'daysShort');
+  const activePeriodIndex = availableShiftPeriods.findIndex(
+    (period) => period.year === activeYear && period.month === activeMonth
+  );
+  const previousPeriod =
+    activePeriodIndex > 0 ? availableShiftPeriods[activePeriodIndex - 1] : undefined;
+  const nextPeriod =
+    activePeriodIndex >= 0 && activePeriodIndex < availableShiftPeriods.length - 1
+      ? availableShiftPeriods[activePeriodIndex + 1]
+      : undefined;
+  const activePeriodPrefix = `${activeYear}-${String(activeMonth).padStart(2, '0')}-`;
+  const hasActiveWorkerData = Object.keys(activeWorker?.shifts || {}).some((date) =>
+    date.startsWith(activePeriodPrefix)
+  );
+
+  const goToPeriod = (year: number, month: number) => {
+    const periodPrefix = `${year}-${String(month).padStart(2, '0')}-`;
+    const activeName = normalizeWorkerName(activeWorker?.name || '');
+    const matchingWorker = workers.find(
+      (worker) =>
+        normalizeWorkerName(worker.name) === activeName &&
+        Object.keys(worker.shifts || {}).some((date) => date.startsWith(periodPrefix))
+    );
+
+    if (matchingWorker && matchingWorker.id !== activeWorker?.id) {
+      setActiveWorkerId(matchingWorker.id);
+    }
+    setActiveYearMonth(year, month);
+  };
+
+  useEffect(() => {
+    if (availableShiftPeriods.length === 0 || activePeriodIndex >= 0) return;
+
+    const activeValue = activeYear * 12 + activeMonth;
+    const nearestPeriod = availableShiftPeriods.reduce((nearest, period) => {
+      const nearestDistance = Math.abs(nearest.year * 12 + nearest.month - activeValue);
+      const periodDistance = Math.abs(period.year * 12 + period.month - activeValue);
+      return periodDistance < nearestDistance ? period : nearest;
+    });
+    setActiveYearMonth(nearestPeriod.year, nearestPeriod.month);
+  }, [activeMonth, activePeriodIndex, activeYear, availableShiftPeriods]);
 
   // Month navigation
   const handlePrevMonth = () => {
-    if (activeMonth === 1) setActiveYearMonth(activeYear - 1, 12);
-    else setActiveYearMonth(activeYear, activeMonth - 1);
+    if (previousPeriod) goToPeriod(previousPeriod.year, previousPeriod.month);
   };
 
   const handleNextMonth = () => {
-    if (activeMonth === 12) setActiveYearMonth(activeYear + 1, 1);
-    else setActiveYearMonth(activeYear, activeMonth + 1);
+    if (nextPeriod) goToPeriod(nextPeriod.year, nextPeriod.month);
+  };
+
+  const handlePeriodChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const [year, month] = event.target.value.split('-').map(Number);
+    goToPeriod(year, month);
   };
 
   // Open Edit Modal for specific day
@@ -390,28 +436,56 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
             <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/30 p-0.5 rounded-xl border border-amber-200 dark:border-amber-800">
               <motion.button
                 onClick={handlePrevMonth}
-                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-amber-950/70 transition-colors cursor-pointer"
-                whileHover={{ x: -3, scale: 1.08 }}
-                whileTap={{ x: -6, scale: 0.88 }}
+                disabled={!previousPeriod}
+                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-amber-950/70 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                whileHover={previousPeriod ? { x: -3, scale: 1.08 } : undefined}
+                whileTap={previousPeriod ? { x: -6, scale: 0.88 } : undefined}
                 transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                 title="Mes anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
               </motion.button>
-              <span className="px-2 text-xs font-black text-amber-950 dark:text-amber-100 uppercase tracking-wider">
-                {monthNames[activeMonth - 1].substring(0, 3)} {activeYear}
-              </span>
+              <label className="relative flex min-h-8 items-center gap-1 px-2 text-xs font-black text-amber-950 dark:text-amber-100 uppercase tracking-wider cursor-pointer">
+                <span>
+                  {monthNames[activeMonth - 1].substring(0, 3)} {activeYear}
+                </span>
+                {availableShiftPeriods.length > 1 && <ChevronDown className="w-3.5 h-3.5" />}
+                <select
+                  value={`${activeYear}-${String(activeMonth).padStart(2, '0')}`}
+                  onChange={handlePeriodChange}
+                  disabled={availableShiftPeriods.length < 2}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
+                  aria-label="Seleccionar mes de turnos"
+                >
+                  {availableShiftPeriods.map((period) => (
+                    <option
+                      key={`${period.year}-${period.month}`}
+                      value={`${period.year}-${String(period.month).padStart(2, '0')}`}
+                    >
+                      {monthNames[period.month - 1]} {period.year}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <motion.button
                 onClick={handleNextMonth}
-                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-amber-950/70 transition-colors cursor-pointer"
-                whileHover={{ x: 3, scale: 1.08 }}
-                whileTap={{ x: 6, scale: 0.88 }}
+                disabled={!nextPeriod}
+                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-amber-950/70 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                whileHover={nextPeriod ? { x: 3, scale: 1.08 } : undefined}
+                whileTap={nextPeriod ? { x: 6, scale: 0.88 } : undefined}
                 transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                 title="Mes siguiente"
               >
                 <ChevronRight className="w-4 h-4" />
               </motion.button>
             </div>
+            {availableShiftPeriods.length > 0 && (
+              <span className="inline-flex min-h-8 items-center gap-1.5 px-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                <CalendarRange className="h-3.5 w-3.5 text-indigo-500" />
+                {availableShiftPeriods.length}{' '}
+                {availableShiftPeriods.length === 1 ? 'mes disponible' : 'meses disponibles'}
+              </span>
+            )}
 
             {/* Copy & Share Action Buttons */}
             <motion.button
@@ -452,7 +526,18 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
               💡 Toca un día para ver detalle u horario de turno
             </p>
 
-            {/* Ultra-Compact Cellular 7-Column Grid */}
+            {!hasActiveWorkerData ? (
+              <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300 bg-amber-50/70 px-5 text-center dark:border-amber-800 dark:bg-amber-950/20">
+                <CalendarIcon className="mb-2 h-6 w-6 text-amber-600 dark:text-amber-400" />
+                <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                  Sin turnos cargados para este trabajador
+                </p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Selecciona otro trabajador o revisa la planilla de {monthNames[activeMonth - 1]}.
+                </p>
+              </div>
+            ) : (
+            /* Ultra-Compact Cellular 7-Column Grid */
             <div className="w-full">
               {/* Day Name Header Row */}
               <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-2">
@@ -525,6 +610,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                 })}
               </div>
             </div>
+            )}
         </div>
       </div>
 

@@ -54,6 +54,18 @@ export interface WorkerProfile {
   };
 }
 
+export interface ImportedWorkerMonth {
+  workers: WorkerProfile[];
+  selectedWorkerId?: string;
+  referenceMonth: number;
+  referenceYear: number;
+}
+
+export interface ShiftPeriod {
+  month: number;
+  year: number;
+}
+
 export interface PersonalEvent {
   id: string;
   title: string;

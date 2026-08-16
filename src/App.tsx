@@ -16,7 +16,16 @@ import { getTranslation } from './utils/i18n';
 import { buttonMotion } from './utils/motionVariants';
 
 function AppMain() {
-  const { settings, clearShiftsOnly, resetFullApp, setUserRole, workers, setLastActiveView } = useApp();
+  const {
+    settings,
+    clearShiftsOnly,
+    resetFullApp,
+    setUserRole,
+    workers,
+    availableShiftPeriods,
+    setActiveYearMonth,
+    setLastActiveView,
+  } = useApp();
   const lang = settings.language;
 
   const canOpenSupervisor = workers.some((w) => Object.keys(w.shifts || {}).length > 0);
@@ -28,8 +37,37 @@ function AppMain() {
   });
   const [focusedPersonalEventId, setFocusedPersonalEventId] = useState<string | null>(null);
 
+  const focusShiftsOnToday = () => {
+    const today = new Date();
+    const currentPeriod = {
+      year: today.getFullYear(),
+      month: today.getMonth() + 1,
+    };
+    const exactPeriod = availableShiftPeriods.find(
+      (period) => period.year === currentPeriod.year && period.month === currentPeriod.month
+    );
+    const targetPeriod =
+      exactPeriod ||
+      availableShiftPeriods.reduce<(typeof availableShiftPeriods)[number] | undefined>(
+        (nearest, period) => {
+          if (!nearest) return period;
+
+          const currentValue = currentPeriod.year * 12 + currentPeriod.month;
+          const nearestDistance = Math.abs(nearest.year * 12 + nearest.month - currentValue);
+          const periodDistance = Math.abs(period.year * 12 + period.month - currentValue);
+          return periodDistance < nearestDistance ? period : nearest;
+        },
+        undefined
+      ) || currentPeriod;
+
+    setActiveYearMonth(targetPeriod.year, targetPeriod.month);
+  };
+
   const setActiveView = (view: 'home' | 'shifts' | 'personal' | 'supervisor') => {
     const nextView = view === 'supervisor' && !canOpenSupervisor ? 'home' : view;
+    if (nextView === 'shifts') {
+      focusShiftsOnToday();
+    }
     if (nextView === 'supervisor') {
       setUserRole('supervisor');
     } else if (settings.userRole === 'supervisor') {
@@ -49,6 +87,12 @@ function AppMain() {
     const safeView = nextView === 'supervisor' && !canOpenSupervisor ? 'home' : nextView;
     setActiveViewState(safeView);
   }, [settings.activeView, canOpenSupervisor]);
+
+  useEffect(() => {
+    if (activeView === 'shifts') {
+      focusShiftsOnToday();
+    }
+  }, []);
 
   useEffect(() => {
     if (!canOpenSupervisor && activeView === 'supervisor') {
@@ -153,7 +197,7 @@ function AppMain() {
       </main>
 
       {/* Persistent Bottom Navigation Bar for Instant Fluid Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 glass-nav px-3 py-2 flex items-center justify-around shadow-2xl">
+      <nav className="app-safe-nav fixed bottom-0 left-0 right-0 z-40 glass-nav px-3 pt-2 flex items-center justify-around shadow-2xl">
         <motion.button
           onClick={() => setActiveView('home')}
           whileHover={buttonMotion.whileHover}
@@ -255,6 +299,10 @@ function AppMain() {
       <ExcelImportModal
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
+        onFinished={() => {
+          setIsImportOpen(false);
+          setActiveView('home');
+        }}
       />
 
       <EvidenceModal
