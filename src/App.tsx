@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Splash } from './components/Splash';
+import { AuthScreen } from './components/AuthScreen';
 import { Header } from './components/Header';
 import { HomeDashboard } from './components/HomeDashboard';
 import { ShiftAnalyzer } from './components/ShiftAnalyzer';
@@ -11,11 +13,12 @@ import { ExcelImportModal } from './components/ExcelImportModal';
 import { EvidenceModal } from './components/EvidenceModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ShareImageModal } from './components/ShareImageModal';
-import { Trash2, RotateCcw, Home, Calendar, Clock, Users } from 'lucide-react';
+import { Trash2, RotateCcw, Home, Calendar, Clock, Users, LoaderCircle } from 'lucide-react';
 import { getTranslation } from './utils/i18n';
 import { buttonMotion } from './utils/motionVariants';
 
 function AppMain() {
+  const { signOut } = useAuth();
   const {
     settings,
     clearShiftsOnly,
@@ -132,6 +135,7 @@ function AppMain() {
         activeView={activeView}
         setActiveView={setActiveView}
         disableSupervisor={!canOpenSupervisor}
+        onSignOut={signOut}
       />
 
       {/* Main View Area */}
@@ -392,6 +396,7 @@ function AppMain() {
 
 function AppRoot() {
   const { markSplashSeen } = useApp();
+  const { session, isLoading } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   const handleFinish = () => {
@@ -411,6 +416,26 @@ function AppRoot() {
         >
           <Splash onFinish={handleFinish} />
         </motion.div>
+      ) : isLoading ? (
+        <motion.div
+          key="session-loading"
+          className="min-h-screen bg-slate-50 flex items-center justify-center text-indigo-600"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <LoaderCircle className="w-8 h-8 animate-spin" />
+        </motion.div>
+      ) : !session ? (
+        <motion.div
+          key="auth"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        >
+          <AuthScreen />
+        </motion.div>
       ) : (
         <motion.div
           key="main"
@@ -428,8 +453,10 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppRoot />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <AppRoot />
+      </AppProvider>
+    </AuthProvider>
   );
 }

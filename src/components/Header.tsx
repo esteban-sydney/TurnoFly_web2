@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Plane, Moon, Sun, Globe, Settings, Users, User, Bell } from 'lucide-react';
+import { Calendar, Plane, Moon, Sun, Globe, Settings, Users, User, Bell, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { Language } from '../types';
@@ -12,6 +12,7 @@ interface HeaderProps {
   activeView: 'home' | 'shifts' | 'personal' | 'supervisor';
   setActiveView: (view: 'home' | 'shifts' | 'personal' | 'supervisor') => void;
   disableSupervisor?: boolean;
+  onSignOut: () => Promise<void>;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeView,
   setActiveView,
   disableSupervisor = false,
+  onSignOut,
 }) => {
   const { settings, setTheme, setUserRole, events } = useApp();
   const lang = settings.language;
@@ -102,6 +104,17 @@ export const Header: React.FC<HeaderProps> = ({
               transition={buttonMotion.transition}
             >
               <Settings className="w-4 h-4" />
+            </motion.button>
+
+            <motion.button
+              onClick={() => void onSignOut()}
+              className="w-8 h-8 rounded-xl border border-slate-200 bg-white text-slate-600 flex items-center justify-center cursor-pointer shadow-xs"
+              title="Cerrar sesión"
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
+            >
+              <LogOut className="w-4 h-4" />
             </motion.button>
           </motion.div>
         </div>
@@ -207,6 +220,17 @@ export const Header: React.FC<HeaderProps> = ({
               transition={buttonMotion.transition}
             >
               <Settings className="w-4 h-4" />
+            </motion.button>
+
+            <motion.button
+              onClick={() => void onSignOut()}
+              className="w-9 h-9 rounded-xl border border-slate-300 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 flex items-center justify-center hover:text-rose-600 transition-colors cursor-pointer shadow-xs shrink-0"
+              title="Cerrar sesión"
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
+            >
+              <LogOut className="w-4 h-4" />
             </motion.button>
           </div>
 

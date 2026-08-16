@@ -1,13 +1,13 @@
 export const buttonMotion = {
   whileHover: { scale: 1.04, y: -1 },
   whileTap: { scale: 0.96, y: 0 },
-  transition: { type: 'spring', stiffness: 260, damping: 24 },
+  transition: { type: 'spring' as const, stiffness: 260, damping: 24 },
 };
 
 export const cardMotion = {
   whileHover: { translateY: -2, scale: 1.01 },
   whileTap: { scale: 0.995 },
-  transition: { type: 'spring', stiffness: 220, damping: 20 },
+  transition: { type: 'spring' as const, stiffness: 220, damping: 20 },
 };
 
 export const resetMotion = {
