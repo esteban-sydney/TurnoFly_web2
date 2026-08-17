@@ -17,7 +17,6 @@ import { createUserStorage, defaultSettings } from '../utils/storage';
 import { FileStore } from '../utils/fileStore';
 import { detectScheduleConflicts } from '../utils/conflictDetector';
 import {
-  generateSampleDemoWorkers,
   COMMON_SHIFT_DEFINITIONS,
   hydrateShiftDefinitionsFromWorkers,
   isRealPersonName,

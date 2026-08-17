@@ -675,16 +675,10 @@ export async function generateSampleExcelBuffer(): Promise<Uint8Array> {
     headers.push(d.toString());
   }
 
-  const sampleWorkerNames = [
-    'Juan Pérez',
-    'María González',
-    'Carlos Silva',
-    'Ana Rodríguez',
-    'Diego Morales',
-    'Sofia Castro',
-    'Luis Fernández',
-    'Patricia Vera',
-  ];
+  const sampleWorkerNames = Array.from(
+    { length: 8 },
+    (_, index) => `Trabajador ${index + 1}`
+  );
 
   const shiftPattern = ['M', 'M', 'T', 'T', 'N', 'N', 'L', 'L'];
 
@@ -708,96 +702,4 @@ export async function generateSampleExcelBuffer(): Promise<Uint8Array> {
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Turnos');
 
   return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
-}
-
-export function generateSampleDemoWorkers(): WorkerProfile[] {
-  const year = 2026;
-  const month = 8; // Agosto 2026
-  const daysInMonth = 31;
-
-  const realWorkersData = [
-    {
-      name: 'Esteban Varas Varela',
-      role: 'Operador / Técnico',
-      dept: 'Operaciones',
-      codes: ['T','T','T','L','L','N','N','M','M','A','M','M','L','L','T','T','T','L','L','N','N','M','M','A','M','M','L','L','T','T','T']
-    },
-    {
-      name: 'Elena Aguilera',
-      role: 'Supervisora de Turno',
-      dept: 'Jefatura',
-      codes: ['L','L','L','D','T','L','M','M','M','D','L','M','M','M','D','L','M','M','M','D','L','M','M','M','D','L','M','M','M','D','L']
-    },
-    {
-      name: 'Juan Poblete',
-      role: 'Técnico de Terreno',
-      dept: 'Mantenimiento',
-      codes: ['N','N','N','T','T','T','L','L','L','L','D','T','L','N','N','N','T','T','T','L','L','L','L','D','T','L','N','N','N','T','T']
-    },
-    {
-      name: 'Santiago Armijo',
-      role: 'Analista de Control',
-      dept: 'Planificación',
-      codes: ['N','N','N','T','A','M','M','L','L','M','A','T','T','N','N','N','T','A','M','M','L','L','M','A','T','T','N','N','N','T','A']
-    },
-    {
-      name: 'Sergio Palma',
-      role: 'Operador Especialista',
-      dept: 'Operaciones',
-      codes: ['M','M','A','M','M','L','L','N','N','N','T','A','M','M','M','M','A','M','M','L','L','N','N','N','T','A','M','M','M','M','A']
-    },
-    {
-      name: 'Victor Muñoz Cabrera',
-      role: 'Soporte de Campo',
-      dept: 'Servicios',
-      codes: ['N','N','N','T','T','T','L','L','L','L','D','T','L','N','N','N','T','T','T','L','L','L','L','D','T','L','N','N','N','T','T']
-    }
-  ];
-
-  return realWorkersData.map((w, idx) => {
-    const shifts: Record<string, DayShift> = {};
-    const shiftEntries: ShiftEntry[] = [];
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const code = w.codes[(d - 1) % w.codes.length] || 'L';
-      const formattedMonth = month.toString().padStart(2, '0');
-      const formattedDay = d.toString().padStart(2, '0');
-      const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
-
-      const def = categorizeCode(code);
-      shifts[dateStr] = {
-        date: dateStr,
-        rawCode: def.code,
-        category: def.category,
-        startTime: def.defaultStartTime,
-        endTime: def.defaultEndTime,
-        isWorkDay: def.isWorkDay,
-        isRemote: true,
-      };
-
-      shiftEntries.push({
-        code: def.code,
-        category: def.category,
-        dayNumber: d,
-        shiftDate: dateStr,
-      });
-    }
-
-    return {
-      id: `worker_${idx}_${w.name.replace(/\s+/g, '_').toLowerCase()}`,
-      name: w.name,
-      role: w.role,
-      department: w.dept,
-      shifts,
-      shiftEntries,
-      referenceMonth: month,
-      referenceYear: year,
-      importMetadata: {
-        sourceFileName: 'Planilla_Agosto_2026.xlsx',
-        sheetName: 'Turnos',
-        detectedLayout: 'matrix',
-        importedAt: new Date().toISOString(),
-      },
-    };
-  });
 }

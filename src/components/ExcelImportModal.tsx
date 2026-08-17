@@ -27,7 +27,6 @@ import {
 import {
   parseExcelBuffer,
   generateSampleExcelBuffer,
-  generateSampleDemoWorkers,
   ParseExcelResult,
   MONTH_NAMES_ES,
   OutOfRangePolicy,
@@ -284,33 +283,6 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }
   };
 
-  const handleLoadDemo = () => {
-    const demoWorkers = generateSampleDemoWorkers();
-    const demoMonth = demoWorkers[0]?.referenceMonth || refMonth;
-    const demoYear = demoWorkers[0]?.referenceYear || refYear;
-    setRefMonth(demoMonth);
-    setRefYear(demoYear);
-    setCurrentFileName('Planilla_Demostracion_Agosto_2026.xlsx');
-    setSelectedWorkerId(demoWorkers[0].id);
-    setParsedData({
-      workers: demoWorkers,
-      year: demoYear,
-      month: demoMonth,
-      totalShiftsCount: demoWorkers.reduce(
-        (total, worker) => total + Object.keys(worker.shifts).length,
-        0
-      ),
-      detectedMonth: demoMonth,
-      detectedYear: demoYear,
-      detectedMonthName: MONTH_NAMES_ES[demoMonth - 1],
-      detectedLayout: 'matrix',
-      sourceSheetName: 'Turnos',
-      outOfRangeDaysCount: 0,
-      hasMonthMismatch: false,
-    });
-    setSuccessMessage(null);
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
       <div className="relative w-full max-w-2xl my-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] glass-card">
@@ -477,30 +449,21 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </div>
               </div>
 
-              {/* Sample Excel Helper Buttons */}
+              {/* Sample spreadsheet download */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-xs">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                   <span className="text-indigo-900 dark:text-indigo-200 font-medium">
-                    ¿Sin archivo listo? Genera una planilla de ejemplo o carga la demostración.
+                    ¿Sin archivo listo? Descarga una planilla neutra para conocer el formato.
                   </span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={handleDownloadSample}
-                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Descargar Ejemplo</span>
-                  </button>
-
-                  <button
-                    onClick={handleLoadDemo}
-                    className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Cargar Ejemplo</span>
-                  </button>
-                </div>
+                <button
+                  onClick={handleDownloadSample}
+                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar Ejemplo</span>
+                </button>
               </div>
             </>
           ) : (

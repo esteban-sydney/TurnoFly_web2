@@ -21,39 +21,39 @@ const shift = (
 
 const workers: WorkerProfile[] = [
   {
-    id: 'felipe-completo',
-    name: 'Felipe Muñoz Aguirre',
+    id: 'persona-alfa-completa',
+    name: 'Persona Alfa Principal',
     shifts: { [date]: shift('M', 'morning', true) },
   },
   {
-    id: 'felipe-abreviado',
-    name: 'Felipe Muñoz',
+    id: 'persona-alfa-abreviada',
+    name: 'Persona Alfa',
     shifts: { [date]: shift('L', 'off', false) },
   },
   {
     id: 'persona-libre',
-    name: 'Camila Soto',
+    name: 'Persona Beta',
     shifts: { [date]: shift('L', 'off', false) },
   },
   {
     id: 'dato-inconsistente',
-    name: 'Daniel Pérez',
+    name: 'Persona Gamma',
     shifts: { [date]: shift('M', 'morning', false) },
   },
   {
     id: 'nombre-ambiguo',
-    name: 'Felipe Andrés Muñoz',
+    name: 'Persona Distinta Alfa',
     shifts: {},
   },
 ];
 
-assert.equal(getWorkerIdentityKey('Felipe Muñoz Aguirre'), 'felipe munoz');
-assert.equal(getWorkerIdentityKey('  FÉLIPE   MUÑOZ  '), 'felipe munoz');
+assert.equal(getWorkerIdentityKey('Persona Alfa Principal'), 'persona alfa');
+assert.equal(getWorkerIdentityKey('  PERSONA   ÁLFA  '), 'persona alfa');
 
 const consolidated = consolidateWorkersByIdentity(workers);
 assert.equal(consolidated.workers.length, 4);
-assert.equal(consolidated.idAliases.get('felipe-abreviado'), 'felipe-completo');
-assert.equal(consolidated.workers[0].name, 'Felipe Muñoz Aguirre');
+assert.equal(consolidated.idAliases.get('persona-alfa-abreviada'), 'persona-alfa-completa');
+assert.equal(consolidated.workers[0].name, 'Persona Alfa Principal');
 assert.equal(consolidated.workers[0].shifts[date].rawCode, 'M');
 
 const incompleteNames = consolidateWorkersByIdentity([
@@ -63,7 +63,7 @@ const incompleteNames = consolidateWorkersByIdentity([
 assert.equal(incompleteNames.workers.length, 2);
 
 const groups = groupWorkersForSupervisorDate(workers, date);
-assert.deepEqual(groups.morning.map((item) => item.workerId), ['felipe-completo']);
+assert.deepEqual(groups.morning.map((item) => item.workerId), ['persona-alfa-completa']);
 assert.deepEqual(groups.off.map((item) => item.workerId), ['persona-libre']);
 assert.deepEqual(
   groups.unknown.map((item) => item.workerId).sort(),
@@ -73,11 +73,11 @@ assert.deepEqual(
 const allGroupedIds = Object.values(groups).flat().map((item) => item.workerId);
 assert.equal(new Set(allGroupedIds).size, consolidated.workers.length);
 assert.equal(allGroupedIds.length, consolidated.workers.length);
-assert.equal(allGroupedIds.includes('felipe-abreviado'), false);
+assert.equal(allGroupedIds.includes('persona-alfa-abreviada'), false);
 
 const similarNames = findSimilarWorkerNames(workers);
 assert.equal(similarNames.length, 1);
-assert.equal(similarNames[0].first.id, 'felipe-abreviado');
+assert.equal(similarNames[0].first.id, 'persona-alfa-abreviada');
 assert.equal(similarNames[0].second.id, 'nombre-ambiguo');
 
 console.log('Jefatura verificada: identidad, turnos superpuestos y nombres ambiguos se resuelven sin duplicar personas.');

@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { detectScheduleConflicts } from '../src/utils/conflictDetector';
 import {
   COMMON_SHIFT_DEFINITIONS,
+  generateSampleExcelBuffer,
   hydrateShiftDefinitionsFromWorkers,
   parseExcelBuffer,
   syncWorkersShiftTimes,
@@ -28,8 +29,8 @@ function shift(
 
 const augustWorkers: WorkerProfile[] = [
   {
-    id: 'worker_esteban_stable',
-    name: 'Esteban Varas Varela',
+    id: 'worker_alpha_stable',
+    name: 'Persona Alfa Principal',
     shifts: {
       '2026-08-11': shift('2026-08-11', 'M', 'morning', '07:30', '15:30'),
       '2026-08-12': shift('2026-08-12', 'T', 'afternoon', '15:30', '23:30'),
@@ -37,8 +38,8 @@ const augustWorkers: WorkerProfile[] = [
     },
   },
   {
-    id: 'worker_elena_stable',
-    name: 'Elena Aguilera',
+    id: 'worker_beta_stable',
+    name: 'Persona Beta Secundaria',
     shifts: {
       '2026-08-11': shift('2026-08-11', 'M', 'morning', '07:30', '15:30'),
     },
@@ -47,8 +48,8 @@ const augustWorkers: WorkerProfile[] = [
 
 const septemberWorkers: WorkerProfile[] = [
   {
-    id: 'row_20_esteban',
-    name: '  ESTEBAN   VARAS VARELA (Operador / Tecnico) ',
+    id: 'row_20_alpha',
+    name: '  PERSONA   ALFA PRINCIPAL (Operador / Tecnico) ',
     shifts: {
       '2026-09-01': shift('2026-09-01', 'M', 'morning', '08:00', '16:00'),
       '2026-09-02': shift('2026-09-02', 'T', 'afternoon', '16:00', '24:00'),
@@ -56,8 +57,8 @@ const septemberWorkers: WorkerProfile[] = [
     },
   },
   {
-    id: 'row_4_carlos',
-    name: 'Carlos Silva',
+    id: 'row_4_gamma',
+    name: 'Persona Gamma Nueva',
     shifts: {
       '2026-09-01': shift('2026-09-01', 'M', 'morning', '08:00', '16:00'),
     },
@@ -74,8 +75,8 @@ const merged = mergeImportedWorkersForPeriod(
 const simplifiedNameMerge = mergeImportedWorkersForPeriod(
   [
     {
-      id: 'felipe_stable',
-      name: 'Felipe Muñoz Aguirre',
+      id: 'identity_stable',
+      name: 'Persona Delta Completa',
       shifts: {
         '2026-08-11': shift('2026-08-11', 'M', 'morning', '07:30', '15:30'),
       },
@@ -83,8 +84,8 @@ const simplifiedNameMerge = mergeImportedWorkersForPeriod(
   ],
   [
     {
-      id: 'felipe_simplified',
-      name: 'Felipe Muñoz',
+      id: 'identity_simplified',
+      name: 'Persona Delta',
       shifts: {
         '2026-09-01': shift('2026-09-01', 'T', 'afternoon', '16:00', '24:00'),
       },
@@ -95,8 +96,8 @@ const simplifiedNameMerge = mergeImportedWorkersForPeriod(
 );
 
 assert.equal(simplifiedNameMerge.length, 1);
-assert.equal(simplifiedNameMerge[0].id, 'felipe_stable');
-assert.equal(simplifiedNameMerge[0].name, 'Felipe Muñoz Aguirre');
+assert.equal(simplifiedNameMerge[0].id, 'identity_stable');
+assert.equal(simplifiedNameMerge[0].name, 'Persona Delta Completa');
 assert.equal(simplifiedNameMerge[0].shifts['2026-08-11'].rawCode, 'M');
 assert.equal(simplifiedNameMerge[0].shifts['2026-09-01'].rawCode, 'T');
 
@@ -107,23 +108,23 @@ const stagedAugustAndSeptember = mergeImportedWorkersForPeriod(
   2026,
   9
 );
-const stagedEsteban = stagedAugustAndSeptember.find(
-  (worker) => worker.name === 'Esteban Varas Varela'
+const stagedAlpha = stagedAugustAndSeptember.find(
+  (worker) => worker.name === 'Persona Alfa Principal'
 );
 
-assert.ok(stagedEsteban, 'La finalización conjunta debe conservar al trabajador seleccionado.');
+assert.ok(stagedAlpha, 'La finalización conjunta debe conservar al trabajador seleccionado.');
 assert.equal(
-  stagedEsteban.shifts['2026-08-11'].rawCode,
+  stagedAlpha.shifts['2026-08-11'].rawCode,
   'M',
   'Guardar septiembre no debe reemplazar agosto.'
 );
 assert.equal(
-  stagedEsteban.shifts['2026-09-02'].rawCode,
+  stagedAlpha.shifts['2026-09-02'].rawCode,
   'T',
   'La finalización debe incluir las letras del segundo mes guardado.'
 );
 assert.equal(
-  stagedEsteban.shifts['2026-09-02'].startTime,
+  stagedAlpha.shifts['2026-09-02'].startTime,
   '15:30',
   'El segundo mes debe heredar el horario definido por el primero.'
 );
@@ -131,7 +132,7 @@ assert.equal(
 const septemberSelectedWithDifferentName: WorkerProfile[] = [
   {
     id: 'selected_worker_september',
-    name: 'E. Varas',
+    name: 'P. Alfa',
     shifts: {
       '2026-09-01': shift('2026-09-01', 'T', 'afternoon', '16:00', '24:00'),
     },
@@ -144,15 +145,15 @@ const explicitlyLinkedSelection = mergeImportedWorkersForPeriod(
   9,
   {
     selectedImportedWorkerId: 'selected_worker_september',
-    targetWorkerId: 'worker_esteban_stable',
+    targetWorkerId: 'worker_alpha_stable',
   }
 );
-const explicitlyLinkedEsteban = explicitlyLinkedSelection.find(
-  (worker) => worker.id === 'worker_esteban_stable'
+const explicitlyLinkedAlpha = explicitlyLinkedSelection.find(
+  (worker) => worker.id === 'worker_alpha_stable'
 );
 
 assert.equal(
-  explicitlyLinkedEsteban?.shifts['2026-09-01'].rawCode,
+  explicitlyLinkedAlpha?.shifts['2026-09-01'].rawCode,
   'T',
   'La seleccion del trabajador debe vincular sus turnos aunque cambie el nombre.'
 );
@@ -181,27 +182,27 @@ assert.equal(
   'La referencia debe definir la fecha aunque el archivo use otro mes.'
 );
 
-const esteban = merged.find((worker) => worker.id === 'worker_esteban_stable');
-const elena = merged.find((worker) => worker.id === 'worker_elena_stable');
-const carlos = merged.find((worker) => worker.name === 'Carlos Silva');
+const alpha = merged.find((worker) => worker.id === 'worker_alpha_stable');
+const beta = merged.find((worker) => worker.id === 'worker_beta_stable');
+const gamma = merged.find((worker) => worker.name === 'Persona Gamma Nueva');
 
 assert.equal(merged.length, 3, 'Debe conservar trabajadores ausentes y agregar trabajadores nuevos.');
-assert.ok(esteban, 'Debe relacionar al trabajador aunque cambien fila, mayúsculas o espacios.');
-assert.ok(elena, 'Debe conservar a Elena aunque no aparezca en septiembre.');
-assert.ok(carlos, 'Debe agregar a Carlos desde septiembre.');
+assert.ok(alpha, 'Debe relacionar al trabajador aunque cambien fila, mayúsculas o espacios.');
+assert.ok(beta, 'Debe conservar a la persona ausente aunque no aparezca en septiembre.');
+assert.ok(gamma, 'Debe agregar a una persona nueva desde septiembre.');
 assert.equal(
   normalizeWorkerName(septemberWorkers[0].name),
   normalizeWorkerName(augustWorkers[0].name),
   'Los datos de cargo agregados al nombre no deben separar al mismo trabajador.'
 );
-assert.equal(esteban.shifts['2026-08-11'].rawCode, 'M', 'Agosto debe conservarse.');
-assert.equal(esteban.shifts['2026-09-02'].rawCode, 'T', 'Debe usar la letra asignada en septiembre.');
-assert.equal(esteban.shifts['2026-09-01'].startTime, '07:30', 'M debe reutilizar el horario de agosto.');
-assert.equal(esteban.shifts['2026-09-02'].startTime, '15:30', 'T debe reutilizar el horario de agosto.');
-assert.equal(carlos.shifts['2026-09-01'].endTime, '15:30', 'Un trabajador nuevo debe usar el horario regularizado.');
+assert.equal(alpha.shifts['2026-08-11'].rawCode, 'M', 'Agosto debe conservarse.');
+assert.equal(alpha.shifts['2026-09-02'].rawCode, 'T', 'Debe usar la letra asignada en septiembre.');
+assert.equal(alpha.shifts['2026-09-01'].startTime, '07:30', 'M debe reutilizar el horario de agosto.');
+assert.equal(alpha.shifts['2026-09-02'].startTime, '15:30', 'T debe reutilizar el horario de agosto.');
+assert.equal(gamma.shifts['2026-09-01'].endTime, '15:30', 'Un trabajador nuevo debe usar el horario regularizado.');
 assert.equal(
-  resolveImportedWorkerId(augustWorkers, septemberWorkers, 'row_20_esteban'),
-  'worker_esteban_stable',
+  resolveImportedWorkerId(augustWorkers, septemberWorkers, 'row_20_alpha'),
+  'worker_alpha_stable',
   'El trabajador seleccionado debe conservar su identidad.'
 );
 
@@ -238,12 +239,12 @@ assert.equal(
   'Una edición excepcional no debe convertirse en el horario global de la letra.'
 );
 
-esteban.shifts['2026-09-02'] = {
-  ...esteban.shifts['2026-09-02'],
+alpha.shifts['2026-09-02'] = {
+  ...alpha.shifts['2026-09-02'],
   notes: 'Cambio coordinado',
 };
-esteban.shifts['2026-09-03'] = {
-  ...esteban.shifts['2026-09-03'],
+alpha.shifts['2026-09-03'] = {
+  ...alpha.shifts['2026-09-03'],
   rawCode: 'L',
   category: 'off',
   startTime: '',
@@ -255,7 +256,7 @@ esteban.shifts['2026-09-03'] = {
 const septemberReimport: WorkerProfile[] = [
   {
     ...septemberWorkers[0],
-    id: 'another_row_esteban',
+    id: 'another_row_alpha',
     shifts: {
       '2026-09-01': shift('2026-09-01', 'T', 'afternoon', '16:00', '24:00'),
       '2026-09-02': shift('2026-09-02', 'M', 'morning', '08:00', '16:00'),
@@ -264,14 +265,14 @@ const septemberReimport: WorkerProfile[] = [
   },
 ];
 const reimported = mergeImportedWorkersForPeriod(merged, septemberReimport, 2026, 9);
-const reimportedEsteban = reimported.find((worker) => worker.id === 'worker_esteban_stable');
+const reimportedAlpha = reimported.find((worker) => worker.id === 'worker_alpha_stable');
 
-assert.ok(reimportedEsteban);
-assert.equal(reimportedEsteban.shifts['2026-08-11'].rawCode, 'M');
-assert.equal(reimportedEsteban.shifts['2026-09-01'].rawCode, 'T');
-assert.equal(reimportedEsteban.shifts['2026-09-02'].rawCode, 'M');
-assert.equal(reimportedEsteban.shifts['2026-09-02'].notes, 'Cambio coordinado');
-assert.equal(reimportedEsteban.shifts['2026-09-03'].rawCode, 'L');
+assert.ok(reimportedAlpha);
+assert.equal(reimportedAlpha.shifts['2026-08-11'].rawCode, 'M');
+assert.equal(reimportedAlpha.shifts['2026-09-01'].rawCode, 'T');
+assert.equal(reimportedAlpha.shifts['2026-09-02'].rawCode, 'M');
+assert.equal(reimportedAlpha.shifts['2026-09-02'].notes, 'Cambio coordinado');
+assert.equal(reimportedAlpha.shifts['2026-09-03'].rawCode, 'L');
 
 const conflicts = detectScheduleConflicts(
   [
@@ -294,7 +295,7 @@ const conflicts = detectScheduleConflicts(
       reminderMinutes: 30,
     },
   ],
-  esteban
+  alpha
 );
 
 assert.ok(conflicts.some((conflict) => conflict.eventId === 'event_sep_morning'));
@@ -310,8 +311,8 @@ const worksheet = XLSX.utils.aoa_to_sheet([
   ['PROGRAMACIÓN DE TURNOS - SEPTIEMBRE 2026'],
   [],
   ['Trabajador', 1, 2, 3, 4, 5],
-  ['Carlos Silva', 'M', 'L', 'T', 'N', 'M'],
-  ['Esteban Varas Varela', 'T', 'M', 'L', 'N', 'T'],
+  ['Persona Gamma Nueva', 'M', 'L', 'T', 'N', 'M'],
+  ['Persona Alfa Principal', 'T', 'M', 'L', 'N', 'T'],
 ]);
 XLSX.utils.book_append_sheet(workbook, worksheet, 'Turnos Septiembre');
 const excelOutput = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as
@@ -325,16 +326,16 @@ const excelBuffer =
         excelOutput.byteOffset + excelOutput.byteLength
       ) as ArrayBuffer);
 const parsedSeptember = await parseExcelBuffer(excelBuffer, 2026, 9, 'ignore');
-const parsedEsteban = parsedSeptember.workers.find(
-  (worker) => worker.name === 'Esteban Varas Varela'
+const parsedAlpha = parsedSeptember.workers.find(
+  (worker) => worker.name === 'Persona Alfa Principal'
 );
-const parsedCarlos = parsedSeptember.workers.find((worker) => worker.name === 'Carlos Silva');
+const parsedGamma = parsedSeptember.workers.find((worker) => worker.name === 'Persona Gamma Nueva');
 
-assert.ok(parsedEsteban, 'El parser debe detectar a Esteban aunque cambie de fila.');
-assert.ok(parsedCarlos, 'El parser debe detectar a Carlos como trabajador nuevo.');
-assert.equal(parsedEsteban.shifts['2026-09-01'].rawCode, 'T');
-assert.equal(parsedEsteban.shifts['2026-09-02'].rawCode, 'M');
-assert.equal(parsedCarlos.shifts['2026-09-02'].rawCode, 'L');
+assert.ok(parsedAlpha, 'El parser debe detectar a la persona aunque cambie de fila.');
+assert.ok(parsedGamma, 'El parser debe detectar a una persona nueva.');
+assert.equal(parsedAlpha.shifts['2026-09-01'].rawCode, 'T');
+assert.equal(parsedAlpha.shifts['2026-09-02'].rawCode, 'M');
+assert.equal(parsedGamma.shifts['2026-09-02'].rawCode, 'L');
 
 const parsedMerge = mergeImportedWorkersForPeriod(
   augustWorkers,
@@ -342,19 +343,19 @@ const parsedMerge = mergeImportedWorkersForPeriod(
   2026,
   9
 );
-const parsedMergedEsteban = parsedMerge.find((worker) => worker.id === 'worker_esteban_stable');
+const parsedMergedAlpha = parsedMerge.find((worker) => worker.id === 'worker_alpha_stable');
 
-assert.ok(parsedMergedEsteban);
-assert.equal(parsedMergedEsteban.shifts['2026-08-11'].rawCode, 'M');
-assert.equal(parsedMergedEsteban.shifts['2026-09-01'].rawCode, 'T');
-assert.equal(parsedMergedEsteban.shifts['2026-09-01'].startTime, '15:30');
+assert.ok(parsedMergedAlpha);
+assert.equal(parsedMergedAlpha.shifts['2026-08-11'].rawCode, 'M');
+assert.equal(parsedMergedAlpha.shifts['2026-09-01'].rawCode, 'T');
+assert.equal(parsedMergedAlpha.shifts['2026-09-01'].startTime, '15:30');
 
 const workbookWithoutMonth = XLSX.utils.book_new();
 const worksheetWithoutMonth = XLSX.utils.aoa_to_sheet([
   ['PROGRAMACION DE TURNOS'],
   [],
   ['Trabajador', 1, 2, 3, 4, 5],
-  ['Esteban Varas Varela', 'M', 'T', 'L', 'N', 'M'],
+  ['Persona Alfa Principal', 'M', 'T', 'L', 'N', 'M'],
 ]);
 XLSX.utils.book_append_sheet(workbookWithoutMonth, worksheetWithoutMonth, 'Turnos');
 const outputWithoutMonth = XLSX.write(workbookWithoutMonth, {
@@ -375,6 +376,14 @@ assert.equal(
   parsedWithoutMonth.workers[0].shifts['2026-09-01'].rawCode,
   'M',
   'Un Excel sin nombre de mes debe obedecer la referencia seleccionada.'
+);
+
+const sampleExcel = await generateSampleExcelBuffer();
+const parsedSample = await parseExcelBuffer(sampleExcel, 2026, 8, 'ignore');
+assert.equal(parsedSample.workers.length, 8, 'La plantilla descargable debe poder importarse.');
+assert.ok(
+  parsedSample.workers.every((worker) => /^Trabajador \d+$/.test(worker.name)),
+  'La plantilla descargable solo debe incluir nombres neutros.'
 );
 
 console.log('Importación acumulativa verificada: meses, trabajadores, horarios y conflictos OK.');

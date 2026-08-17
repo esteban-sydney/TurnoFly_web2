@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
-import { generateSampleDemoWorkers } from '../utils/excelParser';
 import { buttonMotion, cardMotion, fadeInUp } from '../utils/motionVariants';
 
 interface HomeDashboardProps {
@@ -37,7 +36,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const {
     settings,
     workers,
-    loadImportedWorkers,
     events,
     conflicts,
     activeYear,
@@ -72,12 +70,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const regularEvents = visibleEvents.filter((event) => !conflictByEventId.has(event.id));
   const conflictedEvents = visibleEvents.filter((event) => conflictByEventId.has(event.id));
 
-
-  // Load sample demo data
-  const handleLoadDemo = () => {
-    const demoWorkers = generateSampleDemoWorkers();
-    loadImportedWorkers(demoWorkers);
-  };
 
   // EMPTY STATE
   if (workers.length === 0) {
@@ -116,17 +108,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 <span>{getTranslation(lang, 'importExcelBtn')}</span>
               </motion.button>
 
-              <motion.button
-                onClick={handleLoadDemo}
-                id="empty-load-demo-btn"
-                className="px-6 py-3.5 rounded-2xl bg-indigo-700/80 hover:bg-indigo-800 text-white border border-indigo-500/50 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer"
-                whileHover={buttonMotion.whileHover}
-                whileTap={buttonMotion.whileTap}
-                transition={buttonMotion.transition}
-              >
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>{getTranslation(lang, 'loadSampleExcel')}</span>
-              </motion.button>
             </div>
           </div>
         </div>

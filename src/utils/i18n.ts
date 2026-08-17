@@ -20,7 +20,6 @@ export const translations = {
     emptyTitle: '¡Bienvenido a TurnoFly!',
     emptySubtitle: 'Para comenzar, importa tu archivo Excel de turnos o agrega un evento a tu calendario personal.',
     importExcelBtn: 'Importar Excel (.xlsx)',
-    loadSampleExcel: 'Cargar Datos de Ejemplo',
     personalCalendarBtn: 'Calendario Personal',
     resetAppBtn: 'Restablecer App',
     
@@ -137,7 +136,6 @@ export const translations = {
     emptyTitle: 'Welcome to TurnoFly!',
     emptySubtitle: 'To get started, import your Excel shift file or add an event to your personal calendar.',
     importExcelBtn: 'Import Excel (.xlsx)',
-    loadSampleExcel: 'Load Sample Data',
     personalCalendarBtn: 'Personal Calendar',
     resetAppBtn: 'Reset App',
     
@@ -244,7 +242,6 @@ export const translations = {
     emptyTitle: 'Bem-vindo ao TurnoFly!',
     emptySubtitle: 'Para começar, importe seu arquivo Excel de turnos ou adicione um evento à sua agenda.',
     importExcelBtn: 'Importar Excel (.xlsx)',
-    loadSampleExcel: 'Carregar Dados de Exemplo',
     personalCalendarBtn: 'Agenda Pessoal',
     resetAppBtn: 'Redefinir App',
     
