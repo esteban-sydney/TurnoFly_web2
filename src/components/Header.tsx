@@ -59,13 +59,25 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-tr from-indigo-600 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-md shadow-indigo-500/25 shrink-0">
               T
             </div>
-            <div className="flex items-center gap-1.5">
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                Turno<span className="text-indigo-600 dark:text-indigo-400">Fly</span>
-              </h1>
-              <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80">
-                v1.0
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Turno<span className="text-indigo-600 dark:text-indigo-400">Fly</span>
+                </h1>
+                <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80">
+                  v1.0
+                </span>
+              </div>
+              <p className="mt-0.5 flex max-w-36 items-center gap-1 text-[9px] font-semibold text-slate-500 dark:text-slate-400 sm:hidden">
+                <span className="truncate">{accountEmail}</span>
+                {isCloudBusy ? (
+                  <LoaderCircle className="h-2.5 w-2.5 shrink-0 animate-spin" />
+                ) : cloudSyncStatus === 'synced' ? (
+                  <Cloud className="h-2.5 w-2.5 shrink-0 text-emerald-600" />
+                ) : (
+                  <CloudOff className="h-2.5 w-2.5 shrink-0 text-amber-600" />
+                )}
+              </p>
             </div>
           </div>
 
