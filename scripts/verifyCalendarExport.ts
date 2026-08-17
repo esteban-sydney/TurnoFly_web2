@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import calendarHandler from '../api/calendar';
+import { GET as getCalendarFile } from '../api/calendar';
 import {
   buildCalendarFile,
   buildDeviceCalendarUrl,
@@ -33,27 +32,12 @@ assert.equal(deviceUrl.searchParams.get('date'), event.date);
 assert.equal(deviceUrl.searchParams.get('reminder'), '30');
 assert.equal(deviceUrl.searchParams.has('notes'), false);
 
-const responseHeaders = new Map<string, string>();
-let responseBody = '';
-const request = {
-  method: 'GET',
-  url: `${deviceUrl.pathname}${deviceUrl.search}`,
-} as IncomingMessage;
-const response = {
-  statusCode: 200,
-  setHeader(name: string, value: string) {
-    responseHeaders.set(name.toLowerCase(), value);
-  },
-  end(value = '') {
-    responseBody = String(value);
-  },
-} as unknown as ServerResponse;
+const response = getCalendarFile(new Request(deviceUrl));
+const responseBody = await response.text();
 
-calendarHandler(request, response);
-
-assert.equal(response.statusCode, 200);
-assert.match(responseHeaders.get('content-type') || '', /^text\/calendar/);
-assert.match(responseHeaders.get('content-disposition') || '', /\.ics"$/);
+assert.equal(response.status, 200);
+assert.match(response.headers.get('content-type') || '', /^text\/calendar/);
+assert.match(response.headers.get('content-disposition') || '', /\.ics"$/);
 assert.match(responseBody, /^BEGIN:VCALENDAR/);
 assert.match(responseBody, /SUMMARY:Control medico/);
 
