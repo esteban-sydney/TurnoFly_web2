@@ -1,6 +1,10 @@
 import type { DayShift, ShiftCodeDefinition, WorkerProfile } from '../types';
 import { categorizeCode, isRealPersonName } from './excelParser';
-import { normalizeWorkerName } from './workerImportMerge';
+import {
+  consolidateWorkersByIdentity,
+  getWorkerIdentityKey,
+  normalizeWorkerName,
+} from './workerImportMerge';
 
 export interface SupervisorWorkerShift {
   workerName: string;
@@ -39,7 +43,9 @@ export const groupWorkersForSupervisorDate = (
     unknown: [],
   };
 
-  workers.filter((worker) => isRealPersonName(worker.name)).forEach((worker) => {
+  const consolidatedWorkers = consolidateWorkersByIdentity(workers).workers;
+
+  consolidatedWorkers.filter((worker) => isRealPersonName(worker.name)).forEach((worker) => {
     const shift = worker.shifts?.[date];
     const baseItem = {
       workerName: worker.name,
@@ -94,6 +100,9 @@ export const findSimilarWorkerNames = (workers: WorkerProfile[]): SimilarWorkerN
       const right = people[rightIndex];
       const leftName = normalizeWorkerName(left.name);
       const rightName = normalizeWorkerName(right.name);
+      const leftIdentity = getWorkerIdentityKey(left.name);
+      const rightIdentity = getWorkerIdentityKey(right.name);
+      if (leftIdentity && leftIdentity === rightIdentity) continue;
       const leftTokens = leftName.split(' ').filter(Boolean);
       const rightTokens = rightName.split(' ').filter(Boolean);
       const sameName = leftName === rightName;

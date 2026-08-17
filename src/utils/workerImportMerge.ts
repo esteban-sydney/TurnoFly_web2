@@ -18,6 +18,100 @@ export function normalizeWorkerName(name: string): string {
     .replace(/\s+/g, ' ');
 }
 
+export function getWorkerIdentityKey(name: string): string {
+  const tokens = normalizeWorkerName(name).split(' ').filter(Boolean);
+  return tokens.length >= 2 ? tokens.slice(0, 2).join(' ') : '';
+}
+
+const choosePreferredWorkerName = (left: string, right: string): string => {
+  if (normalizeWorkerName(left) === normalizeWorkerName(right)) return left.trim();
+
+  const leftTokens = normalizeWorkerName(left).split(' ').filter(Boolean).length;
+  const rightTokens = normalizeWorkerName(right).split(' ').filter(Boolean).length;
+
+  if (leftTokens !== rightTokens) return leftTokens > rightTokens ? left : right;
+  return left.length >= right.length ? left : right;
+};
+
+const getShiftPriority = (shift: DayShift): number => {
+  const code = shift.rawCode?.trim().toUpperCase();
+  return (
+    Number(Boolean(shift.editedManually)) * 1000 +
+    Number(Boolean(shift.isWorkDay)) * 100 +
+    Number(Boolean(code && code !== 'L')) * 20 +
+    Number(Boolean(shift.startTime || shift.endTime)) * 5 +
+    Number(Boolean(shift.notes))
+  );
+};
+
+export interface ConsolidatedWorkers {
+  workers: WorkerProfile[];
+  idAliases: Map<string, string>;
+  changed: boolean;
+}
+
+export function consolidateWorkersByIdentity(workers: WorkerProfile[]): ConsolidatedWorkers {
+  const consolidated: WorkerProfile[] = [];
+  const indexByIdentity = new Map<string, number>();
+  const idAliases = new Map<string, string>();
+  let changed = false;
+
+  workers.forEach((worker) => {
+    const identityKey = getWorkerIdentityKey(worker.name);
+    const existingIndex = indexByIdentity.get(identityKey);
+
+    if (!identityKey || existingIndex === undefined) {
+      indexByIdentity.set(identityKey || worker.id, consolidated.length);
+      idAliases.set(worker.id, worker.id);
+      consolidated.push(worker);
+      return;
+    }
+
+    changed = true;
+    const existing = consolidated[existingIndex];
+    const mergedShifts: Record<string, DayShift> = { ...existing.shifts };
+
+    Object.entries(worker.shifts || {}).forEach(([date, incomingShift]) => {
+      const currentShift = mergedShifts[date];
+      if (!currentShift || getShiftPriority(incomingShift) > getShiftPriority(currentShift)) {
+        mergedShifts[date] = incomingShift;
+      }
+    });
+
+    const sourceEntries = [...(existing.shiftEntries || []), ...(worker.shiftEntries || [])];
+    const shiftEntries = Object.entries(mergedShifts)
+      .sort(([leftDate], [rightDate]) => leftDate.localeCompare(rightDate))
+      .map(([date, mergedShift]) => {
+        const matchingEntry = sourceEntries.find(
+          (entry) =>
+            entry.shiftDate === date &&
+            entry.code?.trim().toUpperCase() === mergedShift.rawCode?.trim().toUpperCase()
+        );
+        const fallbackEntry = sourceEntries.find((entry) => entry.shiftDate === date);
+
+        return {
+          ...(matchingEntry || fallbackEntry),
+          code: mergedShift.rawCode,
+          category: mergedShift.category,
+          dayNumber: Number(date.slice(-2)),
+          shiftDate: date,
+        } satisfies ShiftEntry;
+      });
+
+    consolidated[existingIndex] = {
+      ...existing,
+      name: choosePreferredWorkerName(existing.name, worker.name),
+      role: existing.role || worker.role,
+      department: existing.department || worker.department,
+      shifts: mergedShifts,
+      shiftEntries,
+    };
+    idAliases.set(worker.id, existing.id);
+  });
+
+  return { workers: consolidated, idAliases, changed };
+}
+
 function getPeriodPrefix(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}-`;
 }
@@ -168,7 +262,7 @@ function mergeWorkerForPeriod(
   return {
     ...imported,
     id: existing.id,
-    name: existing.name,
+    name: choosePreferredWorkerName(existing.name, imported.name),
     role: existing.role || imported.role,
     department: existing.department || imported.department,
     shifts: mergedShifts,
@@ -183,20 +277,33 @@ export function mergeImportedWorkersForPeriod(
   month: number,
   options: MergeImportedWorkersOptions = {}
 ): WorkerProfile[] {
+  const existingConsolidation = consolidateWorkersByIdentity(existingWorkers);
+  const importedConsolidation = consolidateWorkersByIdentity(importedWorkers);
+  const normalizedExistingWorkers = existingConsolidation.workers;
+  const normalizedImportedWorkers = importedConsolidation.workers;
+  const selectedImportedWorkerId = options.selectedImportedWorkerId
+    ? importedConsolidation.idAliases.get(options.selectedImportedWorkerId) ||
+      options.selectedImportedWorkerId
+    : undefined;
+  const targetWorkerId = options.targetWorkerId
+    ? existingConsolidation.idAliases.get(options.targetWorkerId) || options.targetWorkerId
+    : undefined;
   const periodPrefix = getPeriodPrefix(year, month);
-  const schedules = collectKnownSchedules(existingWorkers);
+  const schedules = collectKnownSchedules(normalizedExistingWorkers);
   const importedByName = new Map(
-    importedWorkers.map((worker) => [normalizeWorkerName(worker.name), worker])
+    normalizedImportedWorkers
+      .map((worker) => [getWorkerIdentityKey(worker.name), worker] as const)
+      .filter(([identityKey]) => Boolean(identityKey))
   );
-  const selectedImportedWorker = options.selectedImportedWorkerId
-    ? importedWorkers.find((worker) => worker.id === options.selectedImportedWorkerId)
+  const selectedImportedWorker = selectedImportedWorkerId
+    ? normalizedImportedWorkers.find((worker) => worker.id === selectedImportedWorkerId)
     : undefined;
   const matchedWorkerIds = new Set<string>();
 
-  const mergedWorkers = existingWorkers.map((existing) => {
-    const workerKey = normalizeWorkerName(existing.name);
+  const mergedWorkers = normalizedExistingWorkers.map((existing) => {
+    const workerKey = getWorkerIdentityKey(existing.name);
     const imported =
-      options.targetWorkerId === existing.id && selectedImportedWorker
+      targetWorkerId === existing.id && selectedImportedWorker
         ? selectedImportedWorker
         : importedByName.get(workerKey);
     if (!imported || matchedWorkerIds.has(imported.id)) return existing;
@@ -205,7 +312,7 @@ export function mergeImportedWorkersForPeriod(
     return mergeWorkerForPeriod(existing, imported, periodPrefix, schedules);
   });
 
-  importedWorkers.forEach((imported) => {
+  normalizedImportedWorkers.forEach((imported) => {
     if (matchedWorkerIds.has(imported.id)) return;
 
     const importedShifts = Object.fromEntries(
@@ -238,9 +345,11 @@ export function resolveImportedWorkerId(
     importedWorkers.find((worker) => worker.id === selectedImportedWorkerId) || importedWorkers[0];
   if (!selectedImportedWorker) return undefined;
 
-  const selectedKey = normalizeWorkerName(selectedImportedWorker.name);
+  const selectedKey = getWorkerIdentityKey(selectedImportedWorker.name);
   return (
-    existingWorkers.find((worker) => normalizeWorkerName(worker.name) === selectedKey)?.id ||
+    (selectedKey
+      ? existingWorkers.find((worker) => getWorkerIdentityKey(worker.name) === selectedKey)?.id
+      : undefined) ||
     selectedImportedWorker.id
   );
 }

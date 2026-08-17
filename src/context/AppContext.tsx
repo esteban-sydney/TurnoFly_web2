@@ -23,6 +23,7 @@ import {
   syncWorkersShiftTimes,
 } from '../utils/excelParser';
 import {
+  consolidateWorkersByIdentity,
   mergeImportedWorkersForPeriod,
   resolveImportedWorkerId,
 } from '../utils/workerImportMerge';
@@ -92,22 +93,45 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({ children, userId }) => {
   const storage = useMemo(() => createUserStorage(userId), [userId]);
-  const [settings, setSettings] = useState<AppSettings>(() => storage.getSettings());
-  const [workers, setWorkers] = useState<WorkerProfile[]>(() => {
+  const initialData = useMemo(() => {
+    const storedSettings = storage.getSettings();
     const saved = storage.getWorkers();
+    let initialWorkers: WorkerProfile[] = [];
+    let initialSettings = storedSettings;
+
     if (saved && saved.length > 0) {
       const sanitized = saved.filter((w) => isRealPersonName(w.name));
       if (sanitized.length > 0) {
-        hydrateShiftDefinitionsFromWorkers(sanitized);
-        const synced = syncWorkersShiftTimes(sanitized);
+        const consolidated = consolidateWorkersByIdentity(sanitized);
+        hydrateShiftDefinitionsFromWorkers(consolidated.workers);
+        const synced = syncWorkersShiftTimes(consolidated.workers);
+        const mappedActiveWorkerId = storedSettings.activeWorkerId
+          ? consolidated.idAliases.get(storedSettings.activeWorkerId)
+          : undefined;
+
+        initialSettings = {
+          ...storedSettings,
+          activeWorkerId: mappedActiveWorkerId,
+        };
+        initialWorkers = synced;
         storage.saveWorkers(synced);
-        return synced;
+        if (mappedActiveWorkerId !== storedSettings.activeWorkerId) {
+          storage.saveSettings(initialSettings);
+        }
       }
     }
-    return [];
-  });
-  const [events, setEvents] = useState<PersonalEvent[]>(() => storage.getEvents());
-  const [evidence, setEvidence] = useState<HorarioEvidence[]>(() => storage.getEvidence());
+
+    return {
+      settings: initialSettings,
+      workers: initialWorkers,
+      events: storage.getEvents(),
+      evidence: storage.getEvidence(),
+    };
+  }, [storage]);
+  const [settings, setSettings] = useState<AppSettings>(() => initialData.settings);
+  const [workers, setWorkers] = useState<WorkerProfile[]>(() => initialData.workers);
+  const [events, setEvents] = useState<PersonalEvent[]>(() => initialData.events);
+  const [evidence, setEvidence] = useState<HorarioEvidence[]>(() => initialData.evidence);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('loading');
 
@@ -168,20 +192,28 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
 
       if (result.status === 'loaded') {
         const remoteWorkers = result.snapshot.workers.filter((worker) => isRealPersonName(worker.name));
-        hydrateShiftDefinitionsFromWorkers(remoteWorkers);
-        const syncedWorkers = syncWorkersShiftTimes(remoteWorkers);
+        const consolidated = consolidateWorkersByIdentity(remoteWorkers);
+        hydrateShiftDefinitionsFromWorkers(consolidated.workers);
+        const syncedWorkers = syncWorkersShiftTimes(consolidated.workers);
+        const remoteSettings = {
+          ...defaultSettings,
+          ...result.snapshot.settings,
+          activeWorkerId: result.snapshot.settings.activeWorkerId
+            ? consolidated.idAliases.get(result.snapshot.settings.activeWorkerId)
+            : undefined,
+        };
 
-        setSettings({ ...defaultSettings, ...result.snapshot.settings });
+        setSettings(remoteSettings);
         setWorkers(syncedWorkers);
         setEvents(result.snapshot.events);
         setEvidence(result.snapshot.evidence);
         setActiveYear(
-          result.snapshot.settings.referenceYear ||
+          remoteSettings.referenceYear ||
             syncedWorkers[0]?.referenceYear ||
             new Date().getFullYear()
         );
         setActiveMonth(
-          result.snapshot.settings.referenceMonth ||
+          remoteSettings.referenceMonth ||
             syncedWorkers[0]?.referenceMonth ||
             new Date().getMonth() + 1
         );

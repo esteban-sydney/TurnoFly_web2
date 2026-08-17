@@ -71,6 +71,35 @@ const merged = mergeImportedWorkersForPeriod(
   9
 );
 
+const simplifiedNameMerge = mergeImportedWorkersForPeriod(
+  [
+    {
+      id: 'felipe_stable',
+      name: 'Felipe Muñoz Aguirre',
+      shifts: {
+        '2026-08-11': shift('2026-08-11', 'M', 'morning', '07:30', '15:30'),
+      },
+    },
+  ],
+  [
+    {
+      id: 'felipe_simplified',
+      name: 'Felipe Muñoz',
+      shifts: {
+        '2026-09-01': shift('2026-09-01', 'T', 'afternoon', '16:00', '24:00'),
+      },
+    },
+  ],
+  2026,
+  9
+);
+
+assert.equal(simplifiedNameMerge.length, 1);
+assert.equal(simplifiedNameMerge[0].id, 'felipe_stable');
+assert.equal(simplifiedNameMerge[0].name, 'Felipe Muñoz Aguirre');
+assert.equal(simplifiedNameMerge[0].shifts['2026-08-11'].rawCode, 'M');
+assert.equal(simplifiedNameMerge[0].shifts['2026-09-01'].rawCode, 'T');
+
 const stagedAugust = mergeImportedWorkersForPeriod([], augustWorkers, 2026, 8);
 const stagedAugustAndSeptember = mergeImportedWorkersForPeriod(
   stagedAugust,
