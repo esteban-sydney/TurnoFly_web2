@@ -8,11 +8,17 @@ import {
   Sunset,
   Moon,
   Coffee,
+  CircleHelp,
+  AlertTriangle,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
-import { categorizeCode } from '../utils/excelParser';
 import { buttonMotion, cardMotion, fadeInUp } from '../utils/motionVariants';
+import {
+  findSimilarWorkerNames,
+  groupWorkersForSupervisorDate,
+  type SupervisorWorkerShift,
+} from '../utils/supervisorShiftGrouping';
 
 const formatShiftCodeBadge = (code: string, count: number) => (
   <span key={code} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-bold uppercase tracking-wide">
@@ -37,10 +43,9 @@ export const SupervisorView: React.FC = () => {
 
   useEffect(() => {
     if (workers.length === 0) return;
-    const firstWorker = workers.find((w) => w.shifts && Object.keys(w.shifts).length > 0);
-    if (!firstWorker) return;
-
-    const shiftDates = Object.keys(firstWorker.shifts);
+    const shiftDates = Array.from(
+      new Set(workers.flatMap((worker) => Object.keys(worker.shifts || {})))
+    ).sort();
     if (shiftDates.length === 0) return;
     if (!shiftDates.includes(selectedDateStr)) {
       setSelectedDateStr(shiftDates[0]);
@@ -79,47 +84,15 @@ export const SupervisorView: React.FC = () => {
     setSelectedDateStr(`${yyyy}-${mm}-${dd}`);
   };
 
-  // Group workers by shift code / category for the selected day (ONLY REAL PEOPLE)
-  const groupedShifts = React.useMemo(() => {
-    const morning: { workerName: string; workerId: string; shift: any; def: any }[] = [];
-    const afternoon: { workerName: string; workerId: string; shift: any; def: any }[] = [];
-    const night: { workerName: string; workerId: string; shift: any; def: any }[] = [];
-    const off: { workerName: string; workerId: string; shift: any; def: any }[] = [];
-    const other: { workerName: string; workerId: string; shift: any; def: any }[] = [];
+  const groupedShifts = React.useMemo(
+    () => groupWorkersForSupervisorDate(workers, selectedDateStr),
+    [workers, selectedDateStr]
+  );
 
-    const realWorkers = workers.filter((w) => typeof w.name === 'string' && w.name.trim().length > 0);
-
-    realWorkers.forEach((w) => {
-      const shift = w.shifts?.[selectedDateStr];
-      const rawCode = shift?.rawCode?.toString().trim().toUpperCase() || 'L';
-      const def = categorizeCode(rawCode);
-      const item = { workerName: w.name, workerId: w.id, shift, def };
-
-      if (!shift || !shift.isWorkDay || def.category === 'off' || def.category === 'vacation' || rawCode === 'L') {
-        off.push(item);
-      } else if (def.category === 'morning' || def.category === 'administrative') {
-        morning.push(item);
-      } else if (def.category === 'afternoon') {
-        afternoon.push(item);
-      } else if (def.category === 'night') {
-        night.push(item);
-      } else {
-        other.push(item);
-      }
-    });
-
-    const sortByName = (a: { workerName: string }, b: { workerName: string }) => a.workerName.localeCompare(b.workerName);
-    morning.sort(sortByName);
-    afternoon.sort(sortByName);
-    night.sort(sortByName);
-    off.sort(sortByName);
-    other.sort(sortByName);
-
-    return { morning, afternoon, night, off, other };
-  }, [workers, selectedDateStr]);
+  const similarWorkerNames = React.useMemo(() => findSimilarWorkerNames(workers), [workers]);
 
   const groupedShiftCodeCounts = React.useMemo(() => {
-    const countCodes = (items: { def: any; shift: any }[]) => {
+    const countCodes = (items: SupervisorWorkerShift[]) => {
       return items.reduce<Record<string, number>>((acc, item) => {
         const code = item.def?.code || item.shift?.rawCode || 'UNKNOWN';
         acc[code] = (acc[code] || 0) + 1;
@@ -220,7 +193,7 @@ export const SupervisorView: React.FC = () => {
         </div>
 
         {/* Coverage Highlights Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 border-t border-indigo-700/50">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 pt-2 border-t border-indigo-700/50">
           <div className="p-2.5 rounded-2xl bg-indigo-950/60 border border-indigo-600/40 text-center">
             <span className="text-[10px] text-indigo-300 font-extrabold uppercase tracking-wider block">
               Trabajan Hoy
@@ -249,14 +222,43 @@ export const SupervisorView: React.FC = () => {
             <span className="text-lg sm:text-xl font-black text-purple-300">{groupedShifts.night.length}</span>
           </div>
 
-          <div className="p-2.5 rounded-2xl bg-emerald-950/60 border border-emerald-600/40 text-center col-span-2 sm:col-span-1">
+          <div className="p-2.5 rounded-2xl bg-emerald-950/60 border border-emerald-600/40 text-center">
             <span className="text-[10px] text-emerald-300 font-extrabold uppercase tracking-wider block">
               Libres (L)
             </span>
             <span className="text-lg sm:text-xl font-black text-emerald-300">{groupedShifts.off.length}</span>
           </div>
+
+          <div className="p-2.5 rounded-2xl bg-slate-950/60 border border-slate-500/50 text-center">
+            <span className="text-[10px] text-slate-300 font-extrabold uppercase tracking-wider block">
+              Sin dato
+            </span>
+            <span className="text-lg sm:text-xl font-black text-slate-200">{groupedShifts.unknown.length}</span>
+          </div>
         </div>
       </div>
+
+      {similarWorkerNames.length > 0 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-wider">Revisar nombres similares</p>
+            <div className="mt-1 space-y-0.5 text-xs font-semibold">
+              {similarWorkerNames.slice(0, 3).map(({ first, second }) => (
+                <p key={`${first.id}-${second.id}`} className="break-words">
+                  {first.name} / {second.name}
+                </p>
+              ))}
+              {similarWorkerNames.length > 3 && (
+                <p>Y {similarWorkerNames.length - 3} coincidencias adicionales.</p>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] text-amber-800 dark:text-amber-300">
+              Se mantienen como personas separadas hasta confirmar que corresponden al mismo trabajador.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* SHIFT GROUPS CARDS FOR TODAY */}
       <div className="space-y-4">
@@ -482,6 +484,49 @@ export const SupervisorView: React.FC = () => {
             </div>
           )}
         </div>
+
+        {groupedShifts.unknown.length > 0 && (
+          <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-sm space-y-3">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="w-9 h-9 rounded-2xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                <CircleHelp className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Sin información para la fecha</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold">
+                    {groupedShifts.unknown.length}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Estos registros no se contabilizan como libres ni como trabajadores presentes.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {groupedShifts.unknown.map(({ workerName, workerId, shift }) => (
+                <div
+                  key={workerId}
+                  onClick={() => setActiveWorkerId(workerId)}
+                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700 flex items-center gap-2.5 cursor-pointer hover:border-indigo-400 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-slate-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                    {workerName.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-black text-slate-900 dark:text-white block truncate">
+                      {workerName}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      {shift?.rawCode ? `Revisar código ${shift.rawCode}` : 'Sin turno cargado'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </motion.div>

@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "test:multi-month": "tsx ./scripts/verifyMultiMonthImport.ts",
     "test:user-isolation": "tsx ./scripts/verifyUserStorageIsolation.ts",
-    "test:rls": "tsx ./scripts/verifySupabaseRls.ts"
+    "test:rls": "tsx ./scripts/verifySupabaseRls.ts",
+    "test:supervisor": "tsx ./scripts/verifySupervisorShiftGrouping.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
