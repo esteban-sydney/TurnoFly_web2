@@ -15,13 +15,12 @@ import {
   ChevronRight,
   CalendarPlus,
   ExternalLink,
-  Loader2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { PersonalEvent } from '../types';
 import {
-  addToDeviceCalendar,
+  buildDeviceCalendarUrl,
   buildGoogleCalendarUrl,
   CalendarExportEvent,
 } from '../utils/calendarExport';
@@ -66,7 +65,6 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
   const [notes, setNotes] = useState('');
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [calendarEventToExport, setCalendarEventToExport] = useState<CalendarExportEvent | null>(null);
-  const [isExportingCalendar, setIsExportingCalendar] = useState(false);
   const handleOpenAdd = (defaultDateStr?: string) => {
     setEditingEvent(null);
     setTitle('');
@@ -199,33 +197,22 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
     setIsModalOpen(false);
   };
 
-  const handleAddToDeviceCalendar = async () => {
-    if (!calendarEventToExport || isExportingCalendar) return;
-
-    setIsExportingCalendar(true);
-    try {
-      const result = await addToDeviceCalendar(calendarEventToExport);
-      setCalendarEventToExport(null);
-      setSaveToast(
-        result === 'opened'
-          ? 'Calendario abierto. Confirma Agregar para guardar la cita y su recordatorio.'
-          : 'Archivo de calendario listo. Ábrelo y confirma la importación del evento.'
-      );
-      window.setTimeout(() => setSaveToast(null), 6000);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      setSaveToast('No se pudo abrir el calendario del teléfono. Inténtalo nuevamente.');
-    } finally {
-      setIsExportingCalendar(false);
+  const handleDeviceCalendarOpened = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!deviceCalendarUrl) {
+      event.preventDefault();
+      setSaveToast('No se pudo preparar el calendario del teléfono. Revisa la fecha y las horas.');
+      return;
     }
+
+    setSaveToast('Calendario abierto. Confirma Agregar para guardar la cita y su recordatorio.');
+    window.setTimeout(() => setCalendarEventToExport(null), 1000);
+    window.setTimeout(() => setSaveToast(null), 6000);
   };
 
   const handleGoogleCalendarOpened = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (isExportingCalendar || !googleCalendarUrl) {
+    if (!googleCalendarUrl) {
       event.preventDefault();
-      if (!googleCalendarUrl) {
-        setSaveToast('No se pudo preparar Google Calendar. Revisa la fecha y las horas.');
-      }
+      setSaveToast('No se pudo preparar Google Calendar. Revisa la fecha y las horas.');
       return;
     }
 
@@ -235,12 +222,17 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
   };
 
   let googleCalendarUrl: string | undefined;
+  let deviceCalendarUrl: string | undefined;
   try {
     googleCalendarUrl = calendarEventToExport
       ? buildGoogleCalendarUrl(calendarEventToExport)
       : undefined;
+    deviceCalendarUrl = calendarEventToExport
+      ? buildDeviceCalendarUrl(calendarEventToExport)
+      : undefined;
   } catch {
     googleCalendarUrl = undefined;
+    deviceCalendarUrl = undefined;
   }
 
   const getTypeIcon = (t: PersonalEvent['type']) => {
@@ -290,29 +282,24 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
             {calendarEventToExport && (
               <>
-                <button
-                  type="button"
-                  onClick={handleAddToDeviceCalendar}
-                  disabled={isExportingCalendar}
-                  className="min-h-10 px-3 py-2 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-70"
+                <a
+                  href={deviceCalendarUrl}
+                  target="_blank"
+                  rel="noopener noreferrer external"
+                  referrerPolicy="no-referrer"
+                  onClick={handleDeviceCalendarOpened}
+                  className="min-h-10 px-3 py-2 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  {isExportingCalendar ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CalendarPlus className="w-4 h-4" />
-                  )}
-                  <span>{isExportingCalendar ? 'Abriendo...' : 'Calendario del teléfono'}</span>
-                </button>
+                  <CalendarPlus className="w-4 h-4" />
+                  <span>Calendario del teléfono</span>
+                </a>
                 <a
                   href={googleCalendarUrl}
                   target="_blank"
                   rel="noopener noreferrer external"
                   referrerPolicy="no-referrer"
                   onClick={handleGoogleCalendarOpened}
-                  aria-disabled={isExportingCalendar}
-                  className={`min-h-10 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 ${
-                    isExportingCalendar ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
-                  }`}
+                  className="min-h-10 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span>Google Calendar</span>
@@ -505,15 +492,15 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                <div className="min-w-0">
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {getTranslation(lang, 'eventType')}
                   </label>
                   <select
                     value={type}
                     onChange={(e: any) => setType(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium outline-none"
+                    className="block w-full min-w-0 max-w-full h-11 px-3 py-0 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium outline-none"
                   >
                     <option value="medical">🩺 Médico</option>
                     <option value="gym">🏋️ Gimnasio</option>
@@ -524,17 +511,19 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                   </select>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {getTranslation(lang, 'eventDate')}
                   </label>
-                  <input
-                    type="date"
-                    required
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium outline-none"
-                  />
+                  <div className="date-input-frame rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-indigo-500 transition-shadow">
+                    <input
+                      type="date"
+                      required
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="date-input-control h-11 px-3 py-0 bg-transparent border-0 text-slate-900 dark:text-white font-medium cursor-pointer"
+                    />
+                  </div>
                 </div>
               </div>
 

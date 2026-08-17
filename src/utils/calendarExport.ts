@@ -1,4 +1,4 @@
-import { PersonalEvent } from '../types';
+import type { PersonalEvent } from '../types';
 
 export type CalendarExportEvent = Pick<
   PersonalEvent,
@@ -51,11 +51,6 @@ function getEventDescription(event: CalendarExportEvent): string {
     : 'Creado en TurnoFly';
 }
 
-function safeFileName(value: string): string {
-  const normalized = value.trim().replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '_');
-  return normalized || 'cita';
-}
-
 export function buildCalendarFile(event: CalendarExportEvent): string {
   const { start, end } = getEventDateRange(event);
 
@@ -102,31 +97,22 @@ export function buildGoogleCalendarUrl(event: CalendarExportEvent): string {
   return calendarUrl.toString();
 }
 
-export async function addToDeviceCalendar(
-  event: CalendarExportEvent
-): Promise<'opened' | 'downloaded'> {
-  const calendarContent = buildCalendarFile(event);
-  const fileName = `TurnoFly_${safeFileName(event.title)}_${event.date}.ics`;
-  const file = new File([calendarContent], fileName, {
-    type: 'text/calendar;charset=utf-8',
-  });
-  const downloadUrl = URL.createObjectURL(file);
-  const link = document.createElement('a');
-  const isIos =
-    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-    (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+export function buildDeviceCalendarUrl(
+  event: CalendarExportEvent,
+  origin = typeof window === 'undefined' ? 'https://turnofly.vercel.app' : window.location.origin
+): string {
+  getEventDateRange(event);
 
-  link.href = downloadUrl;
-  if (isIos) {
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer external';
-  } else {
-    link.download = fileName;
+  const calendarUrl = new URL('/api/calendar', origin);
+  calendarUrl.searchParams.set('title', event.title);
+  calendarUrl.searchParams.set('date', event.date);
+  calendarUrl.searchParams.set('start', event.startTime);
+  calendarUrl.searchParams.set('end', event.endTime);
+  calendarUrl.searchParams.set('reminder', String(Math.max(0, event.reminderMinutes)));
+
+  if (event.id) {
+    calendarUrl.searchParams.set('id', event.id);
   }
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
-  return isIos ? 'opened' : 'downloaded';
+
+  return calendarUrl.toString();
 }
