@@ -10,6 +10,7 @@ import {
   UserRole,
   DayShift,
   ImportedWorkerMonth,
+  ShiftImportRecord,
   ShiftPeriod,
 } from '../types';
 import { createUserStorage, defaultSettings } from '../utils/storage';
@@ -25,6 +26,7 @@ import {
 import {
   consolidateWorkersByIdentity,
   mergeImportedWorkersForPeriod,
+  removeShiftPeriodFromWorkers,
   resolveImportedWorkerId,
 } from '../utils/workerImportMerge';
 import {
@@ -45,6 +47,7 @@ interface AppContextType {
   activeYear: number;
   activeMonth: number;
   availableShiftPeriods: ShiftPeriod[];
+  shiftImports: ShiftImportRecord[];
   cloudSyncStatus: CloudSyncStatus;
   
   // Actions
@@ -84,6 +87,7 @@ interface AppContextType {
   
   // Resets
   clearShiftsOnly: () => void;
+  deleteShiftPeriod: (year: number, month: number) => void;
   resetFullApp: () => void;
   exportBackup: () => string;
   importBackup: (jsonStr: string) => boolean;
@@ -306,6 +310,35 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
       });
   }, [workers]);
 
+  const shiftImports = useMemo<ShiftImportRecord[]>(() => {
+    const savedImports = new Map(
+      (settings.shiftImports || []).map((item) => [item.key, item] as const)
+    );
+
+    return availableShiftPeriods.map((period) => {
+      const key = `${period.year}-${String(period.month).padStart(2, '0')}`;
+      const savedImport = savedImports.get(key);
+      const matchingWorker = workers.find(
+        (worker) =>
+          worker.referenceYear === period.year && worker.referenceMonth === period.month
+      );
+
+      return {
+        key,
+        year: period.year,
+        month: period.month,
+        sourceFileName:
+          savedImport?.sourceFileName ||
+          matchingWorker?.importMetadata?.sourceFileName ||
+          `Planilla ${String(period.month).padStart(2, '0')}-${period.year}.xlsx`,
+        importedAt:
+          savedImport?.importedAt ||
+          matchingWorker?.importMetadata?.importedAt ||
+          '',
+      };
+    });
+  }, [availableShiftPeriods, settings.shiftImports, workers]);
+
   const setLanguage = (lang: Language) => {
     setSettings((prev) => ({ ...prev, language: lang }));
   };
@@ -403,6 +436,29 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
       activeWorkerId: chosenId,
       referenceYear: targetYear,
       referenceMonth: targetMonth,
+      shiftImports: (() => {
+        const records = new Map(
+          (prev.shiftImports || []).map((item) => [item.key, item] as const)
+        );
+
+        validImports.forEach((item) => {
+          const key = `${item.referenceYear}-${String(item.referenceMonth).padStart(2, '0')}`;
+          records.set(key, {
+            key,
+            year: item.referenceYear,
+            month: item.referenceMonth,
+            sourceFileName:
+              item.sourceFileName ||
+              item.workers[0]?.importMetadata?.sourceFileName ||
+              `Planilla ${String(item.referenceMonth).padStart(2, '0')}-${item.referenceYear}.xlsx`,
+            importedAt: new Date().toISOString(),
+          });
+        });
+
+        return Array.from(records.values()).sort((left, right) =>
+          left.key.localeCompare(right.key)
+        );
+      })(),
     }));
   };
 
@@ -522,7 +578,45 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
   const clearShiftsOnly = () => {
     storage.clearShiftsOnly();
     setWorkers([]);
-    setSettings((prev) => ({ ...prev, activeWorkerId: undefined }));
+    setSettings((prev) => ({
+      ...prev,
+      activeWorkerId: undefined,
+      shiftImports: [],
+    }));
+  };
+
+  const deleteShiftPeriod = (year: number, month: number) => {
+    const nextWorkers = removeShiftPeriodFromWorkers(workers, year, month);
+    const remainingPeriodKeys = Array.from(
+      new Set(
+        nextWorkers.flatMap((worker) =>
+          Object.keys(worker.shifts || {}).map((date) => date.slice(0, 7))
+        )
+      )
+    ).sort();
+    const deletedKey = `${year}-${String(month).padStart(2, '0')}`;
+    const activeKey = `${activeYear}-${String(activeMonth).padStart(2, '0')}`;
+    const fallbackKey = remainingPeriodKeys.at(-1);
+    const targetKey = remainingPeriodKeys.includes(activeKey) ? activeKey : fallbackKey;
+    const [targetYear, targetMonth] = targetKey
+      ? targetKey.split('-').map(Number)
+      : [new Date().getFullYear(), new Date().getMonth() + 1];
+    const activeWorkerStillExists = nextWorkers.some(
+      (worker) => worker.id === settings.activeWorkerId
+    );
+
+    setWorkers(nextWorkers);
+    setActiveYear(targetYear);
+    setActiveMonth(targetMonth);
+    setSettings((prev) => ({
+      ...prev,
+      activeWorkerId: activeWorkerStillExists
+        ? prev.activeWorkerId
+        : nextWorkers[0]?.id,
+      referenceYear: targetYear,
+      referenceMonth: targetMonth,
+      shiftImports: (prev.shiftImports || []).filter((item) => item.key !== deletedKey),
+    }));
   };
 
   const resetFullApp = () => {
@@ -561,6 +655,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         activeYear,
         activeMonth,
         availableShiftPeriods,
+        shiftImports,
         cloudSyncStatus,
         setLanguage,
         setTheme,
@@ -579,6 +674,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         addEvidence,
         deleteEvidence,
         clearShiftsOnly,
+        deleteShiftPeriod,
         resetFullApp,
         exportBackup,
         importBackup,

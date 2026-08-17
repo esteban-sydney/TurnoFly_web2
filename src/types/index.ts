@@ -59,11 +59,18 @@ export interface ImportedWorkerMonth {
   selectedWorkerId?: string;
   referenceMonth: number;
   referenceYear: number;
+  sourceFileName?: string;
 }
 
 export interface ShiftPeriod {
   month: number;
   year: number;
+}
+
+export interface ShiftImportRecord extends ShiftPeriod {
+  key: string;
+  sourceFileName: string;
+  importedAt: string;
 }
 
 export interface PersonalEvent {
@@ -115,4 +122,5 @@ export interface AppSettings {
   dismissedConflicts: string[]; // event IDs
   referenceMonth?: number;
   referenceYear?: number;
+  shiftImports?: ShiftImportRecord[];
 }

@@ -22,14 +22,17 @@ function AppMain() {
   const {
     settings,
     clearShiftsOnly,
+    deleteShiftPeriod,
     resetFullApp,
     setUserRole,
     workers,
     availableShiftPeriods,
+    shiftImports,
     setActiveYearMonth,
     setLastActiveView,
   } = useApp();
   const lang = settings.language;
+  const monthNames = getTranslation(lang, 'months') as string[];
 
   const canOpenSupervisor = workers.some((w) => Object.keys(w.shifts || {}).length > 0);
 
@@ -111,6 +114,7 @@ function AppMain() {
 
   // Confirmation Dialog States
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [pendingShiftDeletion, setPendingShiftDeletion] = useState<string | null>(null);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [showResetAnimation, setShowResetAnimation] = useState(false);
 
@@ -124,6 +128,35 @@ function AppMain() {
       setShowResetAnimation(false);
     }, 1400);
   };
+
+  const openClearShiftsDialog = () => {
+    setPendingShiftDeletion(null);
+    setConfirmClearOpen(true);
+  };
+
+  const handleConfirmShiftDeletion = () => {
+    if (!pendingShiftDeletion) return;
+
+    if (pendingShiftDeletion === 'all') {
+      clearShiftsOnly();
+    } else {
+      const selectedImport = shiftImports.find(
+        (item) => item.key === pendingShiftDeletion
+      );
+      if (selectedImport) {
+        deleteShiftPeriod(selectedImport.year, selectedImport.month);
+      }
+    }
+
+    setPendingShiftDeletion(null);
+    setConfirmClearOpen(false);
+    setActiveView('home');
+  };
+
+  const pendingShiftImport =
+    pendingShiftDeletion && pendingShiftDeletion !== 'all'
+      ? shiftImports.find((item) => item.key === pendingShiftDeletion)
+      : undefined;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors flex flex-col font-sans overflow-x-hidden w-full">
@@ -153,7 +186,7 @@ function AppMain() {
                 onOpenImport={() => setIsImportOpen(true)}
                 onOpenPersonalEvent={openPersonalEvent}
                 setActiveView={setActiveView}
-                onConfirmClearShifts={() => setConfirmClearOpen(true)}
+                onConfirmClearShifts={openClearShiftsDialog}
                 onConfirmResetApp={() => setConfirmResetOpen(true)}
               />
             </motion.div>
@@ -317,14 +350,14 @@ function AppMain() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onConfirmClearShifts={() => setConfirmClearOpen(true)}
+        onConfirmClearShifts={openClearShiftsDialog}
         onConfirmResetApp={() => setConfirmResetOpen(true)}
       />
 
       {/* Clear Shifts Confirmation Dialog */}
       {confirmClearOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 text-xs">
+          <div className="w-full max-w-md max-h-[88vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-xs">
             <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
               <div className="p-2.5 rounded-2xl bg-amber-100 dark:bg-amber-950">
                 <Trash2 className="w-6 h-6" />
@@ -334,25 +367,94 @@ function AppMain() {
               </h3>
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              {getTranslation(lang, 'confirmClearShifts')}
+              Selecciona el Excel o mes que deseas eliminar. Tus otros turnos y citas personales se mantendrán sin cambios.
             </p>
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setConfirmClearOpen(false)}
-                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 font-semibold cursor-pointer"
-              >
-                {getTranslation(lang, 'cancel')}
-              </button>
+
+            {shiftImports.length > 0 ? (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-700">
+                {shiftImports.map((item) => (
+                  <div
+                    key={item.key}
+                    className="flex items-center gap-3 px-3 py-3 bg-slate-50/70 dark:bg-slate-800/60"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
+                      <Calendar className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-slate-900 dark:text-white capitalize">
+                        {monthNames[item.month - 1]} {item.year}
+                      </p>
+                      <p className="truncate text-[10px] text-slate-500 dark:text-slate-400">
+                        {item.sourceFileName}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingShiftDeletion(item.key)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/50 dark:hover:text-rose-300 cursor-pointer"
+                      aria-label={`Eliminar ${monthNames[item.month - 1]} ${item.year}`}
+                      title="Eliminar este mes"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-slate-500 dark:text-slate-400">
+                No hay turnos cargados para eliminar.
+              </div>
+            )}
+
+            {pendingShiftDeletion && (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">
+                <p className="font-black">
+                  {pendingShiftDeletion === 'all'
+                    ? '¿Eliminar todos los turnos cargados?'
+                    : pendingShiftImport
+                    ? `¿Eliminar ${monthNames[pendingShiftImport.month - 1]} ${pendingShiftImport.year}?`
+                    : '¿Eliminar este mes?'}
+                </p>
+                <p className="mt-1 text-[10px] text-rose-700 dark:text-rose-300">
+                  Esta acción no eliminará tus citas personales.
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+              {shiftImports.length > 1 && !pendingShiftDeletion ? (
+                <button
+                  type="button"
+                  onClick={() => setPendingShiftDeletion('all')}
+                  className="px-3 py-2 rounded-xl text-[11px] font-bold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 cursor-pointer"
+                >
+                  Eliminar todos
+                </button>
+              ) : (
+                <span />
+              )}
+              <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={() => {
-                  clearShiftsOnly();
-                  setConfirmClearOpen(false);
-                  setActiveView('home');
+                  if (pendingShiftDeletion) {
+                    setPendingShiftDeletion(null);
+                  } else {
+                    setConfirmClearOpen(false);
+                  }
                 }}
-                className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold cursor-pointer"
+                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 font-semibold cursor-pointer"
               >
-                {getTranslation(lang, 'confirmDelete')}
+                {pendingShiftDeletion ? getTranslation(lang, 'cancel') : 'Cerrar'}
               </button>
+              {pendingShiftDeletion && (
+                <button
+                  onClick={handleConfirmShiftDeletion}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer"
+                >
+                  Eliminar
+                </button>
+              )}
+              </div>
             </div>
           </div>
         </div>

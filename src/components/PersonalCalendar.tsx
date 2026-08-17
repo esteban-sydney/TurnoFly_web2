@@ -207,9 +207,9 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
       const result = await addToDeviceCalendar(calendarEventToExport);
       setCalendarEventToExport(null);
       setSaveToast(
-        result === 'shared'
-          ? 'Evento enviado. Confirma la aplicación de calendario en tu teléfono.'
-          : 'Archivo de calendario descargado. Ábrelo para confirmar el evento.'
+        result === 'opened'
+          ? 'Calendario abierto. Confirma Agregar para guardar la cita y su recordatorio.'
+          : 'Archivo de calendario listo. Ábrelo y confirma la importación del evento.'
       );
       window.setTimeout(() => setSaveToast(null), 6000);
     } catch (error) {

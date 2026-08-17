@@ -10,6 +10,7 @@ export const defaultSettings: AppSettings = {
   remindersEnabled: true,
   defaultRemoteMode: true,
   dismissedConflicts: [],
+  shiftImports: [],
 };
 
 const buildUserKeys = (userId: string) => {

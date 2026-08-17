@@ -104,30 +104,29 @@ export function buildGoogleCalendarUrl(event: CalendarExportEvent): string {
 
 export async function addToDeviceCalendar(
   event: CalendarExportEvent
-): Promise<'shared' | 'downloaded'> {
+): Promise<'opened' | 'downloaded'> {
   const calendarContent = buildCalendarFile(event);
   const fileName = `TurnoFly_${safeFileName(event.title)}_${event.date}.ics`;
   const file = new File([calendarContent], fileName, {
     type: 'text/calendar;charset=utf-8',
   });
-
-  if (navigator.share && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({
-      title: `Agregar ${event.title} al calendario`,
-      text: `Cita ${event.date} a las ${event.startTime}`,
-      files: [file],
-    });
-    return 'shared';
-  }
-
   const downloadUrl = URL.createObjectURL(file);
   const link = document.createElement('a');
+  const isIos =
+    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
   link.href = downloadUrl;
-  link.download = fileName;
+  if (isIos) {
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer external';
+  } else {
+    link.download = fileName;
+  }
   link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-  return 'downloaded';
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
+  return isIos ? 'opened' : 'downloaded';
 }

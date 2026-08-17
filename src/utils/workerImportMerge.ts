@@ -353,3 +353,35 @@ export function resolveImportedWorkerId(
     selectedImportedWorker.id
   );
 }
+
+export function removeShiftPeriodFromWorkers(
+  workers: WorkerProfile[],
+  year: number,
+  month: number
+): WorkerProfile[] {
+  const periodPrefix = getPeriodPrefix(year, month);
+
+  return workers
+    .map((worker) => {
+      const shifts = Object.fromEntries(
+        Object.entries(worker.shifts || {}).filter(([date]) => !date.startsWith(periodPrefix))
+      );
+      const shiftEntries = (worker.shiftEntries || []).filter(
+        (entry) => !entry.shiftDate.startsWith(periodPrefix)
+      );
+      const remainingDates = Object.keys(shifts).sort();
+      const latestDate = remainingDates.at(-1);
+      const [referenceYear, referenceMonth] = latestDate
+        ? latestDate.split('-').map(Number)
+        : [undefined, undefined];
+
+      return {
+        ...worker,
+        shifts,
+        shiftEntries,
+        referenceMonth,
+        referenceYear,
+      };
+    })
+    .filter((worker) => Object.keys(worker.shifts).length > 0);
+}

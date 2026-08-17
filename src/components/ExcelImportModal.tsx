@@ -189,11 +189,19 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const handleSaveMonth = () => {
     if (!parsedData || parsedData.workers.length === 0) return;
 
+    const sourceFileName = currentFileName || parsedData.sourceSheetName;
     const referencedWorkers = assignWorkersToReferencePeriod(
       parsedData.workers,
       refYear,
       refMonth
-    );
+    ).map((worker) => ({
+      ...worker,
+      importMetadata: {
+        ...worker.importMetadata,
+        sourceFileName,
+        importedAt: new Date().toISOString(),
+      },
+    }));
     const selectedWorker =
       referencedWorkers.find((worker) => worker.id === selectedWorkerId) ||
       referencedWorkers[0];
@@ -205,7 +213,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       selectedWorkerName: selectedWorker.name,
       referenceMonth: refMonth,
       referenceYear: refYear,
-      sourceFileName: currentFileName || parsedData.sourceSheetName,
+      sourceFileName,
       totalShiftsCount: parsedData.totalShiftsCount,
     };
     const alreadySaved = savedMonths.some((item) => item.key === key);
@@ -243,11 +251,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     loadImportedWorkerMonths(
       [...savedMonths]
         .sort((left, right) => left.key.localeCompare(right.key))
-        .map(({ workers, selectedWorkerId, referenceMonth, referenceYear }) => ({
+        .map(({ workers, selectedWorkerId, referenceMonth, referenceYear, sourceFileName }) => ({
         workers,
         selectedWorkerId,
         referenceMonth,
         referenceYear,
+        sourceFileName,
         }))
     );
     setSavedMonths([]);
