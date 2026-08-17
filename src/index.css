@@ -102,6 +102,9 @@ button:not(:disabled):active, .clickable-card:active {
   min-inline-size: 0 !important;
   max-inline-size: 100% !important;
   box-sizing: border-box;
+  block-size: 2.75rem;
+  padding-block: 0 !important;
+  line-height: 2.75rem;
   text-align: center;
 }
 
@@ -112,16 +115,34 @@ button:not(:disabled):active, .clickable-card:active {
 
 .time-input-control::-webkit-date-and-time-value,
 .date-input-control::-webkit-date-and-time-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-inline-size: 0;
   inline-size: 100%;
+  block-size: 100%;
+  padding-block: 0;
+  line-height: normal;
   text-align: center;
 }
 
 .time-input-control::-webkit-datetime-edit,
 .date-input-control::-webkit-datetime-edit {
   display: flex;
+  align-items: center;
   inline-size: 100%;
+  block-size: 100%;
   justify-content: center;
+  padding-block: 0;
+  line-height: normal;
+}
+
+.time-input-control::-webkit-datetime-edit-fields-wrapper,
+.date-input-control::-webkit-datetime-edit-fields-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 100%;
 }
 
 /* Custom animations */

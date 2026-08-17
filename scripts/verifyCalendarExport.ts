@@ -4,6 +4,7 @@ import {
   buildCalendarFile,
   buildDeviceCalendarUrl,
   buildGoogleCalendarUrl,
+  getSuggestedEventEndTime,
 } from '../src/utils/calendarExport';
 
 const event = {
@@ -31,6 +32,9 @@ assert.equal(deviceUrl.pathname, '/api/calendar.ics');
 assert.equal(deviceUrl.searchParams.get('date'), event.date);
 assert.equal(deviceUrl.searchParams.get('reminder'), '30');
 assert.equal(deviceUrl.searchParams.has('notes'), false);
+assert.equal(getSuggestedEventEndTime('19:00'), '20:00');
+assert.equal(getSuggestedEventEndTime('23:30'), '00:30');
+assert.equal(getSuggestedEventEndTime('08:15'), '09:15');
 
 const response = getCalendarFile(new Request(deviceUrl));
 const responseBody = await response.text();

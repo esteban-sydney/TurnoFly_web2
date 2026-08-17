@@ -23,6 +23,7 @@ import {
   buildDeviceCalendarUrl,
   buildGoogleCalendarUrl,
   CalendarExportEvent,
+  getSuggestedEventEndTime,
 } from '../utils/calendarExport';
 
 interface PersonalCalendarProps {
@@ -92,6 +93,13 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
     setReminderMinutes(evt.reminderMinutes);
     setNotes(evt.notes || '');
     setIsModalOpen(true);
+  };
+
+  const handleStartTimeChange = (nextStartTime: string) => {
+    setStartTime(nextStartTime);
+    if (nextStartTime) {
+      setEndTime(getSuggestedEventEndTime(nextStartTime));
+    }
   };
 
   useEffect(() => {
@@ -535,7 +543,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                       type="time"
                       required
                       value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
+                      onChange={(e) => handleStartTimeChange(e.target.value)}
                       className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-center text-slate-900 dark:text-white font-bold text-sm cursor-pointer"
                     />
                   </div>

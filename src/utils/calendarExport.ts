@@ -5,6 +5,20 @@ export type CalendarExportEvent = Pick<
   'title' | 'date' | 'startTime' | 'endTime' | 'reminderMinutes' | 'notes'
 > & { id?: string };
 
+export function getSuggestedEventEndTime(startTime: string): string {
+  const match = /^(\d{2}):(\d{2})$/.exec(startTime);
+  if (!match) return startTime;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return startTime;
+
+  const endMinutes = (hours * 60 + minutes + 60) % (24 * 60);
+  return `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(
+    endMinutes % 60
+  ).padStart(2, '0')}`;
+}
+
 function escapeCalendarText(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
