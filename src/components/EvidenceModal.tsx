@@ -13,6 +13,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { FileStore } from '../utils/fileStore';
+import { useAuth } from '../context/AuthContext';
 
 interface EvidenceModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface EvidenceModalProps {
 }
 
 export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   const { settings, evidence, addEvidence, deleteEvidence } = useApp();
   const lang = settings.language;
 
@@ -38,7 +40,8 @@ export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose })
       await Promise.all(
         evidence.map(async (ev) => {
           if (!ev.storageKey) return;
-          const file = await FileStore.getFile(ev.storageKey);
+          if (!user) return;
+          const file = await FileStore.getFile(user.id, ev.storageKey);
           if (!file) return;
           const url = URL.createObjectURL(file);
           createdUrls.push(url);
@@ -56,11 +59,12 @@ export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose })
       isMounted = false;
       createdUrls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [isOpen, evidence]);
+  }, [isOpen, evidence, user]);
 
   if (!isOpen) return null;
 
   const handleFileUpload = async (file: File) => {
+    if (!user) return;
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -82,7 +86,7 @@ export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose })
     const fileSizeMb = parseFloat((file.size / (1024 * 1024)).toFixed(2));
 
     try {
-      await FileStore.saveFile(id, file);
+      await FileStore.saveFile(user.id, id, file);
       addEvidence({
         id,
         fileName: file.name,
@@ -108,9 +112,10 @@ export const EvidenceModal: React.FC<EvidenceModalProps> = ({ isOpen, onClose })
   };
 
   const handleDeleteEvidence = async (id: string, storageKey?: string) => {
+    if (!user) return;
     if (storageKey) {
       try {
-        await FileStore.deleteFile(storageKey);
+        await FileStore.deleteFile(user.id, storageKey);
       } catch (error) {
         console.error('Error deleting evidence file:', error);
       }

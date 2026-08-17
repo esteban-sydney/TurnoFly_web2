@@ -12,7 +12,8 @@ import {
   ImportedWorkerMonth,
   ShiftPeriod,
 } from '../types';
-import { StorageService, defaultSettings } from '../utils/storage';
+import { createUserStorage, defaultSettings } from '../utils/storage';
+import { FileStore } from '../utils/fileStore';
 import { detectScheduleConflicts } from '../utils/conflictDetector';
 import {
   generateSampleDemoWorkers,
@@ -81,23 +82,24 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<AppSettings>(() => StorageService.getSettings());
+export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({ children, userId }) => {
+  const storage = useMemo(() => createUserStorage(userId), [userId]);
+  const [settings, setSettings] = useState<AppSettings>(() => storage.getSettings());
   const [workers, setWorkers] = useState<WorkerProfile[]>(() => {
-    const saved = StorageService.getWorkers();
+    const saved = storage.getWorkers();
     if (saved && saved.length > 0) {
       const sanitized = saved.filter((w) => isRealPersonName(w.name));
       if (sanitized.length > 0) {
         hydrateShiftDefinitionsFromWorkers(sanitized);
         const synced = syncWorkersShiftTimes(sanitized);
-        StorageService.saveWorkers(synced);
+        storage.saveWorkers(synced);
         return synced;
       }
     }
     return [];
   });
-  const [events, setEvents] = useState<PersonalEvent[]>(() => StorageService.getEvents());
-  const [evidence, setEvidence] = useState<HorarioEvidence[]>(() => StorageService.getEvidence());
+  const [events, setEvents] = useState<PersonalEvent[]>(() => storage.getEvents());
+  const [evidence, setEvidence] = useState<HorarioEvidence[]>(() => storage.getEvidence());
 
   const [activeYear, setActiveYear] = useState<number>(() => {
     return settings.referenceYear || workers[0]?.referenceYear || new Date().getFullYear();
@@ -128,25 +130,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       body.classList.remove('dark');
     }
 
-    StorageService.saveSettings(settings);
   }, [settings]);
 
   // Sync state changes to storage
   useEffect(() => {
-    StorageService.saveSettings(settings);
-  }, [settings]);
+    storage.saveSettings(settings);
+  }, [settings, storage]);
 
   useEffect(() => {
-    StorageService.saveWorkers(workers);
-  }, [workers]);
+    storage.saveWorkers(workers);
+  }, [workers, storage]);
 
   useEffect(() => {
-    StorageService.saveEvents(events);
-  }, [events]);
+    storage.saveEvents(events);
+  }, [events, storage]);
 
   useEffect(() => {
-    StorageService.saveEvidence(evidence);
-  }, [evidence]);
+    storage.saveEvidence(evidence);
+  }, [evidence, storage]);
+
+  useEffect(() => {
+    void FileStore.migrateLegacyFiles(
+      userId,
+      evidence.map((item) => item.storageKey).filter((key): key is string => Boolean(key))
+    );
+  }, [userId]);
 
   const activeWorker = useMemo(() => {
     const realWorkers = workers.filter((w) => isRealPersonName(w.name));
@@ -395,30 +403,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const clearShiftsOnly = () => {
-    StorageService.clearShiftsOnly();
+    storage.clearShiftsOnly();
     setWorkers([]);
     setSettings((prev) => ({ ...prev, activeWorkerId: undefined }));
   };
 
   const resetFullApp = () => {
-    StorageService.resetFullApp();
-    setSettings(defaultSettings);
+    storage.resetFullApp();
+    void FileStore.clearUserFiles(userId);
+    setSettings({ ...defaultSettings });
     setWorkers([]);
     setEvents([]);
     setEvidence([]);
   };
 
   const exportBackup = () => {
-    return StorageService.exportBackupData();
+    return storage.exportBackupData();
   };
 
   const importBackup = (jsonStr: string) => {
-    const success = StorageService.importBackupData(jsonStr);
+    const success = storage.importBackupData(jsonStr);
     if (success) {
-      setSettings(StorageService.getSettings());
-      setWorkers(StorageService.getWorkers());
-      setEvents(StorageService.getEvents());
-      setEvidence(StorageService.getEvidence());
+      setSettings(storage.getSettings());
+      setWorkers(storage.getWorkers());
+      setEvents(storage.getEvents());
+      setEvidence(storage.getEvidence());
     }
     return success;
   };

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "clean": "node ./scripts/clean.js",
     "lint": "tsc --noEmit",
-    "test:multi-month": "tsx ./scripts/verifyMultiMonthImport.ts"
+    "test:multi-month": "tsx ./scripts/verifyMultiMonthImport.ts",
+    "test:user-isolation": "tsx ./scripts/verifyUserStorageIsolation.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

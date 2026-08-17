@@ -395,12 +395,10 @@ function AppMain() {
 }
 
 function AppRoot() {
-  const { markSplashSeen } = useApp();
   const { session, isLoading } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   const handleFinish = () => {
-    markSplashSeen();
     setShowSplash(false);
   };
 
@@ -438,13 +436,15 @@ function AppRoot() {
         </motion.div>
       ) : (
         <motion.div
-          key="main"
+          key={`main-${session.user.id}`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
         >
-          <AppMain />
+          <AppProvider userId={session.user.id}>
+            <AppMain />
+          </AppProvider>
         </motion.div>
       )}
     </AnimatePresence>
@@ -454,9 +454,7 @@ function AppRoot() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppProvider>
-        <AppRoot />
-      </AppProvider>
+      <AppRoot />
     </AuthProvider>
   );
 }
