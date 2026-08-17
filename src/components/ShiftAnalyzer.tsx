@@ -643,7 +643,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
       {/* EDIT SHIFT MODAL */}
       {selectedDate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-lg my-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto glass-card">
+          <div className="relative w-full max-w-lg my-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-x-hidden overflow-y-auto glass-card">
             
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
@@ -735,30 +735,34 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                     <label className="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                       {getTranslation(lang, 'startTimeLabel')}
                     </label>
-                    <input
-                      type="time"
-                      value={toTimeInputValue(editStartTime)}
-                      onChange={(e) => setEditStartTime(e.target.value)}
-                      className="block min-w-0 max-w-full w-full h-11 px-3 py-0 box-border rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-sky-500 transition-all cursor-pointer"
-                    />
+                    <div className="time-input-frame rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-sky-500 transition-shadow">
+                      <input
+                        type="time"
+                        value={toTimeInputValue(editStartTime)}
+                        onChange={(e) => setEditStartTime(e.target.value)}
+                        className="time-input-control h-11 px-3 py-0 bg-transparent border-0 font-bold text-sm text-slate-900 dark:text-white cursor-pointer"
+                      />
+                    </div>
                   </div>
                   <div className="min-w-0">
                     <label className="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                       {getTranslation(lang, 'endTimeLabel')}
                     </label>
-                    <input
-                      type="time"
-                      value={toTimeInputValue(editEndTime)}
-                      onChange={(e) =>
-                        setEditEndTime(
-                          fromTimeInputValue(
-                            e.target.value,
-                            categorizeCode(editCode).defaultEndTime
+                    <div className="time-input-frame rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-sky-500 transition-shadow">
+                      <input
+                        type="time"
+                        value={toTimeInputValue(editEndTime)}
+                        onChange={(e) =>
+                          setEditEndTime(
+                            fromTimeInputValue(
+                              e.target.value,
+                              categorizeCode(editCode).defaultEndTime
+                            )
                           )
-                        )
-                      }
-                      className="block min-w-0 max-w-full w-full h-11 px-3 py-0 box-border rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-sky-500 transition-all cursor-pointer"
-                    />
+                        }
+                        className="time-input-control h-11 px-3 py-0 bg-transparent border-0 font-bold text-sm text-slate-900 dark:text-white cursor-pointer"
+                      />
+                    </div>
                   </div>
                   <div className="col-span-2 min-h-4 -mt-1">
                     {editEndTime === '24:00' ? (

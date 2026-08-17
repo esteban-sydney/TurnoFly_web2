@@ -476,7 +476,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
       {/* ADD / EDIT EVENT MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-lg my-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto glass-card">
+          <div className="relative w-full max-w-lg my-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-x-hidden overflow-y-auto glass-card">
             
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
@@ -543,26 +543,30 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                   <label className="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {getTranslation(lang, 'startTime')}
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
-                  />
+                  <div className="time-input-frame rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-indigo-500 transition-shadow">
+                    <input
+                      type="time"
+                      required
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-slate-900 dark:text-white font-bold text-sm cursor-pointer"
+                    />
+                  </div>
                 </div>
 
                 <div className="min-w-0">
                   <label className="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {getTranslation(lang, 'endTime')}
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
-                  />
+                  <div className="time-input-frame rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-indigo-500 transition-shadow">
+                    <input
+                      type="time"
+                      required
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-slate-900 dark:text-white font-bold text-sm cursor-pointer"
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -86,6 +86,31 @@ button:not(:disabled):active, .clickable-card:active {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
+/* Mobile date/time controls can keep an intrinsic width larger than a grid cell. */
+.time-input-frame {
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
+}
+
+.time-input-control {
+  display: block;
+  inline-size: 100% !important;
+  min-inline-size: 0 !important;
+  max-inline-size: 100% !important;
+  box-sizing: border-box;
+}
+
+.time-input-control:focus-visible {
+  outline: none !important;
+}
+
+.time-input-control::-webkit-date-and-time-value {
+  min-inline-size: 0;
+  text-align: left;
+}
+
 /* Custom animations */
 @keyframes floatSlow {
   0%, 100% { transform: translateY(0px); }
