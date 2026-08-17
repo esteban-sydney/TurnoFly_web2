@@ -117,7 +117,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('TurnoFly', {
         body: message,
-        icon: '/favicon.ico',
+        icon: '/icons/turnofly-192.png',
       });
     }
   };
@@ -284,8 +284,6 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
               <>
                 <a
                   href={deviceCalendarUrl}
-                  target="_blank"
-                  rel="noopener noreferrer external"
                   referrerPolicy="no-referrer"
                   onClick={handleDeviceCalendarOpened}
                   className="min-h-10 px-3 py-2 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer"
@@ -521,7 +519,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                       required
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="date-input-control h-11 px-3 py-0 bg-transparent border-0 text-slate-900 dark:text-white font-medium cursor-pointer"
+                      className="date-input-control h-11 px-3 py-0 bg-transparent border-0 text-center text-slate-900 dark:text-white font-medium cursor-pointer"
                     />
                   </div>
                 </div>
@@ -538,7 +536,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                       required
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-slate-900 dark:text-white font-bold text-sm cursor-pointer"
+                      className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-center text-slate-900 dark:text-white font-bold text-sm cursor-pointer"
                     />
                   </div>
                 </div>
@@ -553,7 +551,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                       required
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-slate-900 dark:text-white font-bold text-sm cursor-pointer"
+                      className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-center text-slate-900 dark:text-white font-bold text-sm cursor-pointer"
                     />
                   </div>
                 </div>

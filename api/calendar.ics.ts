@@ -96,7 +96,7 @@ export function GET(request: Request): Response {
     status: 200,
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Disposition': `inline; filename="${fileName}"`,
       'Cache-Control': 'private, no-store, max-age=0',
       'X-Content-Type-Options': 'nosniff',
     },

@@ -1,8 +1,9 @@
-const CACHE_NAME = 'turnofly-v1';
+const CACHE_NAME = 'turnofly-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/icons/turnofly-32.png',
   '/icons/turnofly-192.png',
   '/icons/turnofly-512.png',
   '/icons/turnofly-maskable-512.png',
@@ -31,6 +32,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(

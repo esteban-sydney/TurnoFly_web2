@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { GET as getCalendarFile } from '../api/calendar';
+import { GET as getCalendarFile } from '../api/calendar.ics';
 import {
   buildCalendarFile,
   buildDeviceCalendarUrl,
@@ -27,7 +27,7 @@ assert.match(calendarFile, /SUMMARY:Control medico/);
 assert.equal(googleUrl.hostname, 'calendar.google.com');
 assert.equal(googleUrl.searchParams.get('text'), event.title);
 assert.equal(deviceUrl.origin, 'https://turnofly.vercel.app');
-assert.equal(deviceUrl.pathname, '/api/calendar');
+assert.equal(deviceUrl.pathname, '/api/calendar.ics');
 assert.equal(deviceUrl.searchParams.get('date'), event.date);
 assert.equal(deviceUrl.searchParams.get('reminder'), '30');
 assert.equal(deviceUrl.searchParams.has('notes'), false);
@@ -37,7 +37,7 @@ const responseBody = await response.text();
 
 assert.equal(response.status, 200);
 assert.match(response.headers.get('content-type') || '', /^text\/calendar/);
-assert.match(response.headers.get('content-disposition') || '', /\.ics"$/);
+assert.match(response.headers.get('content-disposition') || '', /^inline;.*\.ics"$/);
 assert.match(responseBody, /^BEGIN:VCALENDAR/);
 assert.match(responseBody, /SUMMARY:Control medico/);
 

@@ -102,6 +102,7 @@ button:not(:disabled):active, .clickable-card:active {
   min-inline-size: 0 !important;
   max-inline-size: 100% !important;
   box-sizing: border-box;
+  text-align: center;
 }
 
 .time-input-control:focus-visible,
@@ -112,7 +113,15 @@ button:not(:disabled):active, .clickable-card:active {
 .time-input-control::-webkit-date-and-time-value,
 .date-input-control::-webkit-date-and-time-value {
   min-inline-size: 0;
-  text-align: left;
+  inline-size: 100%;
+  text-align: center;
+}
+
+.time-input-control::-webkit-datetime-edit,
+.date-input-control::-webkit-datetime-edit {
+  display: flex;
+  inline-size: 100%;
+  justify-content: center;
 }
 
 /* Custom animations */

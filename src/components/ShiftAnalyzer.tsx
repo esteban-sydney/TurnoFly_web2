@@ -740,7 +740,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                         type="time"
                         value={toTimeInputValue(editStartTime)}
                         onChange={(e) => setEditStartTime(e.target.value)}
-                        className="time-input-control h-11 px-3 py-0 bg-transparent border-0 font-bold text-sm text-slate-900 dark:text-white cursor-pointer"
+                        className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-center font-bold text-sm text-slate-900 dark:text-white cursor-pointer"
                       />
                     </div>
                   </div>
@@ -760,7 +760,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                             )
                           )
                         }
-                        className="time-input-control h-11 px-3 py-0 bg-transparent border-0 font-bold text-sm text-slate-900 dark:text-white cursor-pointer"
+                        className="time-input-control h-11 px-3 py-0 bg-transparent border-0 text-center font-bold text-sm text-slate-900 dark:text-white cursor-pointer"
                       />
                     </div>
                   </div>

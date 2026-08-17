@@ -103,7 +103,7 @@ export function buildDeviceCalendarUrl(
 ): string {
   getEventDateRange(event);
 
-  const calendarUrl = new URL('/api/calendar', origin);
+  const calendarUrl = new URL('/api/calendar.ics', origin);
   calendarUrl.searchParams.set('title', event.title);
   calendarUrl.searchParams.set('date', event.date);
   calendarUrl.searchParams.set('start', event.startTime);
