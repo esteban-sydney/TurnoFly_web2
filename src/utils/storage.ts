@@ -1,14 +1,5 @@
 import { AppSettings, WorkerProfile, PersonalEvent, HorarioEvidence } from '../types';
 
-const LEGACY_KEYS = {
-  settings: 'turnofly_settings_v1',
-  workers: 'turnofly_workers_v1',
-  events: 'turnofly_events_v1',
-  evidence: 'turnofly_evidence_v1',
-} as const;
-
-const LEGACY_MIGRATION_OWNER_KEY = 'turnofly_legacy_migration_owner_v1';
-
 export const defaultSettings: AppSettings = {
   theme: 'light',
   language: 'es',
@@ -31,39 +22,14 @@ const buildUserKeys = (userId: string) => {
   } as const;
 };
 
-const migrateLegacyData = (userId: string, userKeys: ReturnType<typeof buildUserKeys>) => {
-  try {
-    const alreadyAssigned = localStorage.getItem(LEGACY_MIGRATION_OWNER_KEY);
-    const hasUserData = Object.values(userKeys).some((key) => localStorage.getItem(key) !== null);
-    const legacyEntries = Object.entries(LEGACY_KEYS)
-      .map(([name, key]) => [name, localStorage.getItem(key)] as const)
-      .filter((entry): entry is readonly [keyof typeof LEGACY_KEYS, string] => entry[1] !== null);
-
-    if (alreadyAssigned || hasUserData || legacyEntries.length === 0) return false;
-
-    legacyEntries.forEach(([name, value]) => {
-      localStorage.setItem(userKeys[name], value);
-    });
-    localStorage.setItem(LEGACY_MIGRATION_OWNER_KEY, userId);
-    Object.values(LEGACY_KEYS).forEach((key) => localStorage.removeItem(key));
-    return true;
-  } catch (error) {
-    console.error('Error migrating legacy TurnoFly data:', error);
-    return false;
-  }
-};
-
 export const createUserStorage = (userId: string) => {
   if (!userId.trim()) {
     throw new Error('A user id is required to access TurnoFly storage.');
   }
 
   const keys = buildUserKeys(userId);
-  const didMigrateLegacyData = migrateLegacyData(userId, keys);
 
   return {
-    didMigrateLegacyData,
-
     getSettings(): AppSettings {
       try {
         const data = localStorage.getItem(keys.settings);

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, CalendarDays, LoaderCircle, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { buttonMotion } from '../utils/motionVariants';
+import { clearPendingAuthEmail, getPendingAuthEmail, savePendingAuthEmail } from '../utils/pendingAuth';
 
 const getMessage = (error: unknown) => {
   const message = error instanceof Error ? error.message.toLowerCase() : '';
@@ -19,9 +20,10 @@ const getMessage = (error: unknown) => {
 
 export const AuthScreen: React.FC = () => {
   const { isConfigured, sendCode, verifyCode } = useAuth();
-  const [email, setEmail] = useState('');
+  const pendingEmail = getPendingAuthEmail();
+  const [email, setEmail] = useState(pendingEmail || '');
   const [code, setCode] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
+  const [codeSent, setCodeSent] = useState(Boolean(pendingEmail));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [secondsUntilResend, setSecondsUntilResend] = useState(0);
@@ -41,7 +43,10 @@ export const AuthScreen: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await sendCode(email.trim().toLowerCase());
+      const normalizedEmail = email.trim().toLowerCase();
+      await sendCode(normalizedEmail);
+      savePendingAuthEmail(normalizedEmail);
+      setEmail(normalizedEmail);
       setCodeSent(true);
       setSecondsUntilResend(60);
     } catch (requestError) {
@@ -64,6 +69,7 @@ export const AuthScreen: React.FC = () => {
 
     try {
       await verifyCode(email.trim().toLowerCase(), code.trim());
+      clearPendingAuthEmail();
     } catch (verifyError) {
       setError(getMessage(verifyError));
     } finally {
@@ -72,6 +78,7 @@ export const AuthScreen: React.FC = () => {
   };
 
   const editEmail = () => {
+    clearPendingAuthEmail();
     setCodeSent(false);
     setCode('');
     setError('');

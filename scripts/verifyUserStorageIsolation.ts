@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createUserStorage } from '../src/utils/storage';
+import { clearPendingAuthEmail, getPendingAuthEmail, savePendingAuthEmail } from '../src/utils/pendingAuth';
 import type { HorarioEvidence, PersonalEvent, WorkerProfile } from '../src/types';
 
 class MemoryStorage implements Storage {
@@ -79,16 +80,18 @@ localStorage.setItem('turnofly_workers_v1', JSON.stringify(legacyWorkers));
 localStorage.setItem('turnofly_evidence_v1', JSON.stringify(legacyEvidence));
 
 const userA = createUserStorage('user-a');
-assert.equal(userA.didMigrateLegacyData, true);
-assert.deepEqual(userA.getEvents(), [legacyEvent]);
-assert.deepEqual(userA.getWorkers(), legacyWorkers);
-assert.deepEqual(userA.getEvidence(), legacyEvidence);
-assert.equal(localStorage.getItem('turnofly_events_v1'), null);
-assert.equal(localStorage.getItem('turnofly_workers_v1'), null);
-assert.equal(localStorage.getItem('turnofly_evidence_v1'), null);
+assert.deepEqual(userA.getEvents(), []);
+assert.deepEqual(userA.getWorkers(), []);
+assert.deepEqual(userA.getEvidence(), []);
+assert.deepEqual(JSON.parse(localStorage.getItem('turnofly_events_v1') || '[]'), [legacyEvent]);
+assert.deepEqual(JSON.parse(localStorage.getItem('turnofly_workers_v1') || '[]'), legacyWorkers);
+assert.deepEqual(JSON.parse(localStorage.getItem('turnofly_evidence_v1') || '[]'), legacyEvidence);
+
+userA.saveEvents([legacyEvent]);
+userA.saveWorkers(legacyWorkers);
+userA.saveEvidence(legacyEvidence);
 
 const userB = createUserStorage('user-b');
-assert.equal(userB.didMigrateLegacyData, false);
 assert.deepEqual(userB.getEvents(), []);
 assert.deepEqual(userB.getWorkers(), []);
 assert.deepEqual(userB.getEvidence(), []);
@@ -101,4 +104,9 @@ userA.resetFullApp();
 assert.deepEqual(userA.getEvents(), []);
 assert.deepEqual(userB.getEvents(), [userBEvent]);
 
-console.log('Aislamiento local verificado: migracion, lectura, escritura y borrado por usuario OK.');
+savePendingAuthEmail(' Usuario@Correo.cl ');
+assert.equal(getPendingAuthEmail(), 'usuario@correo.cl');
+clearPendingAuthEmail();
+assert.equal(getPendingAuthEmail(), null);
+
+console.log('Aislamiento local y continuidad OTP verificados por usuario OK.');

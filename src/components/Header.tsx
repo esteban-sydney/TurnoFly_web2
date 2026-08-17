@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Plane, Moon, Sun, Globe, Settings, Users, User, Bell, LogOut } from 'lucide-react';
+import { Calendar, Plane, Moon, Sun, Globe, Settings, Users, User, Bell, LogOut, Cloud, CloudOff, LoaderCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { getTranslation } from '../utils/i18n';
 import { Language } from '../types';
 import { buttonMotion, fadeInUp } from '../utils/motionVariants';
@@ -23,9 +24,20 @@ export const Header: React.FC<HeaderProps> = ({
   disableSupervisor = false,
   onSignOut,
 }) => {
-  const { settings, setTheme, setUserRole, events } = useApp();
+  const { settings, setTheme, setUserRole, events, cloudSyncStatus } = useApp();
+  const { user } = useAuth();
   const lang = settings.language;
   const eventCount = events.length;
+  const accountEmail = user?.email || 'Cuenta TurnoFly';
+  const isCloudBusy = cloudSyncStatus === 'loading' || cloudSyncStatus === 'saving';
+  const cloudLabel =
+    cloudSyncStatus === 'synced'
+      ? 'Agenda sincronizada y privada'
+      : cloudSyncStatus === 'local'
+        ? 'Agenda guardada solo en este dispositivo'
+        : cloudSyncStatus === 'error'
+          ? 'No se pudo sincronizar la agenda'
+          : 'Sincronizando agenda';
 
   return (
     <motion.header
@@ -109,7 +121,8 @@ export const Header: React.FC<HeaderProps> = ({
             <motion.button
               onClick={() => void onSignOut()}
               className="w-8 h-8 rounded-xl border border-slate-200 bg-white text-slate-600 flex items-center justify-center cursor-pointer shadow-xs"
-              title="Cerrar sesión"
+              title={`Cerrar sesión de ${accountEmail}`}
+              aria-label={`Cerrar sesión de ${accountEmail}`}
               whileHover={buttonMotion.whileHover}
               whileTap={buttonMotion.whileTap}
               transition={buttonMotion.transition}
@@ -164,6 +177,23 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Desktop Controls (Theme + Conflicts + Settings) */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <div
+              className="hidden lg:flex min-w-0 max-w-56 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              title={`${accountEmail}. ${cloudLabel}`}
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-[10px] font-black uppercase text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                {accountEmail.charAt(0)}
+              </span>
+              <span className="min-w-0 truncate text-[11px] font-bold">{accountEmail}</span>
+              {isCloudBusy ? (
+                <LoaderCircle className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-500" />
+              ) : cloudSyncStatus === 'synced' ? (
+                <Cloud className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              ) : (
+                <CloudOff className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+              )}
+            </div>
+
             {/* Appointment reminder bell */}
             {eventCount > 0 && (
               <motion.button
@@ -225,7 +255,8 @@ export const Header: React.FC<HeaderProps> = ({
             <motion.button
               onClick={() => void onSignOut()}
               className="w-9 h-9 rounded-xl border border-slate-300 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 flex items-center justify-center hover:text-rose-600 transition-colors cursor-pointer shadow-xs shrink-0"
-              title="Cerrar sesión"
+              title={`Cerrar sesión de ${accountEmail}`}
+              aria-label={`Cerrar sesión de ${accountEmail}`}
               whileHover={buttonMotion.whileHover}
               whileTap={buttonMotion.whileTap}
               transition={buttonMotion.transition}

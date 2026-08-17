@@ -10,7 +10,8 @@
     "clean": "node ./scripts/clean.js",
     "lint": "tsc --noEmit",
     "test:multi-month": "tsx ./scripts/verifyMultiMonthImport.ts",
-    "test:user-isolation": "tsx ./scripts/verifyUserStorageIsolation.ts"
+    "test:user-isolation": "tsx ./scripts/verifyUserStorageIsolation.ts",
+    "test:rls": "tsx ./scripts/verifySupabaseRls.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

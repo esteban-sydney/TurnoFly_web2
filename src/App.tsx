@@ -442,7 +442,7 @@ function AppRoot() {
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
         >
-          <AppProvider userId={session.user.id}>
+          <AppProvider key={session.user.id} userId={session.user.id}>
             <AppMain />
           </AppProvider>
         </motion.div>

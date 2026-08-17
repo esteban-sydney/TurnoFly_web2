@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { clearPendingAuthEmail } from '../utils/pendingAuth';
 
 interface AuthContextValue {
   session: Session | null;
@@ -38,6 +39,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       if (mounted) {
         setSession(data.session);
         setIsLoading(false);
+        if (data.session) clearPendingAuthEmail();
       }
     });
 
@@ -45,6 +47,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       if (mounted) {
         setSession(nextSession);
         setIsLoading(false);
+        if (nextSession) clearPendingAuthEmail();
       }
     });
 
@@ -63,23 +66,47 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       sendCode: async (email) => {
         const { error } = await getClient().auth.signInWithOtp({
           email,
-          options: { shouldCreateUser: true },
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: window.location.origin,
+          },
         });
 
         if (error) throw error;
       },
       verifyCode: async (email, token) => {
-        const { error } = await getClient().auth.verifyOtp({
+        const client = getClient();
+        let verification = await client.auth.verifyOtp({
           email,
           token,
           type: 'email',
         });
 
-        if (error) throw error;
+        if (verification.error) {
+          verification = await client.auth.verifyOtp({
+            email,
+            token,
+            type: 'signup',
+          });
+        }
+
+        if (verification.error) throw verification.error;
+        if (!verification.data.session) {
+          throw new Error('Supabase no devolvio una sesion despues de validar el codigo.');
+        }
+
+        clearPendingAuthEmail();
+        setSession(verification.data.session);
       },
       signOut: async () => {
-        const { error } = await getClient().auth.signOut();
-        if (error) throw error;
+        setIsLoading(true);
+        const { error } = await getClient().auth.signOut({ scope: 'local' });
+        if (error) {
+          setIsLoading(false);
+          throw error;
+        }
+        setSession(null);
+        setIsLoading(false);
       },
     }),
     [session, isLoading]

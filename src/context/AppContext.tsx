@@ -26,6 +26,13 @@ import {
   mergeImportedWorkersForPeriod,
   resolveImportedWorkerId,
 } from '../utils/workerImportMerge';
+import {
+  loadUserAppSnapshot,
+  saveUserAppSnapshot,
+  type UserAppSnapshot,
+} from '../utils/cloudStorage';
+
+export type CloudSyncStatus = 'loading' | 'saving' | 'synced' | 'local' | 'error';
 
 interface AppContextType {
   settings: AppSettings;
@@ -37,6 +44,7 @@ interface AppContextType {
   activeYear: number;
   activeMonth: number;
   availableShiftPeriods: ShiftPeriod[];
+  cloudSyncStatus: CloudSyncStatus;
   
   // Actions
   setLanguage: (lang: Language) => void;
@@ -100,6 +108,8 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
   });
   const [events, setEvents] = useState<PersonalEvent[]>(() => storage.getEvents());
   const [evidence, setEvidence] = useState<HorarioEvidence[]>(() => storage.getEvidence());
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('loading');
 
   const [activeYear, setActiveYear] = useState<number>(() => {
     return settings.referenceYear || workers[0]?.referenceYear || new Date().getFullYear();
@@ -150,11 +160,86 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
   }, [evidence, storage]);
 
   useEffect(() => {
-    void FileStore.migrateLegacyFiles(
-      userId,
-      evidence.map((item) => item.storageKey).filter((key): key is string => Boolean(key))
-    );
-  }, [userId]);
+    let cancelled = false;
+
+    const initializeCloudStorage = async () => {
+      const result = await loadUserAppSnapshot(userId);
+      if (cancelled) return;
+
+      if (result.status === 'loaded') {
+        const remoteWorkers = result.snapshot.workers.filter((worker) => isRealPersonName(worker.name));
+        hydrateShiftDefinitionsFromWorkers(remoteWorkers);
+        const syncedWorkers = syncWorkersShiftTimes(remoteWorkers);
+
+        setSettings({ ...defaultSettings, ...result.snapshot.settings });
+        setWorkers(syncedWorkers);
+        setEvents(result.snapshot.events);
+        setEvidence(result.snapshot.evidence);
+        setActiveYear(
+          result.snapshot.settings.referenceYear ||
+            syncedWorkers[0]?.referenceYear ||
+            new Date().getFullYear()
+        );
+        setActiveMonth(
+          result.snapshot.settings.referenceMonth ||
+            syncedWorkers[0]?.referenceMonth ||
+            new Date().getMonth() + 1
+        );
+        setCloudSyncEnabled(true);
+        setCloudSyncStatus('synced');
+        return;
+      }
+
+      if (result.status === 'empty') {
+        const initialSnapshot: UserAppSnapshot = {
+          version: 1,
+          settings,
+          workers,
+          events,
+          evidence,
+        };
+        const saved = await saveUserAppSnapshot(userId, initialSnapshot);
+        if (cancelled) return;
+
+        setCloudSyncEnabled(saved);
+        setCloudSyncStatus(saved ? 'synced' : 'error');
+        return;
+      }
+
+      setCloudSyncEnabled(false);
+      setCloudSyncStatus('local');
+    };
+
+    void initializeCloudStorage();
+    return () => {
+      cancelled = true;
+    };
+  }, [storage, userId]);
+
+  useEffect(() => {
+    if (!cloudSyncEnabled) return;
+
+    let cancelled = false;
+    setCloudSyncStatus('saving');
+    const timer = window.setTimeout(() => {
+      const snapshot: UserAppSnapshot = {
+        version: 1,
+        settings,
+        workers,
+        events,
+        evidence,
+      };
+
+      void saveUserAppSnapshot(userId, snapshot).then((saved) => {
+        if (!cancelled) setCloudSyncStatus(saved ? 'synced' : 'error');
+      });
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [cloudSyncEnabled, evidence, events, settings, userId, workers]);
 
   const activeWorker = useMemo(() => {
     const realWorkers = workers.filter((w) => isRealPersonName(w.name));
@@ -444,6 +529,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         activeYear,
         activeMonth,
         availableShiftPeriods,
+        cloudSyncStatus,
         setLanguage,
         setTheme,
         setUserRole,
