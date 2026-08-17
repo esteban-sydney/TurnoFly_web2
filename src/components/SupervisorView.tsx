@@ -309,7 +309,7 @@ export const SupervisorView: React.FC = () => {
                         {workerName}
                       </span>
                       <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 block">
-                        {def?.name || 'Turno Noche'} • {def?.defaultStartTime && def?.defaultEndTime ? `${def.defaultStartTime} - ${def.defaultEndTime}` : (shift?.startTime && shift?.endTime ? `${shift.startTime} - ${shift.endTime}` : 'Noche')}
+                        {def?.name || 'Turno Noche'} • {shift?.startTime && shift?.endTime ? `${shift.startTime} - ${shift.endTime}` : (def?.defaultStartTime && def?.defaultEndTime ? `${def.defaultStartTime} - ${def.defaultEndTime}` : 'Noche')}
                       </span>
                     </div>
                   </div>
@@ -368,7 +368,7 @@ export const SupervisorView: React.FC = () => {
                         {workerName}
                       </span>
                       <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block">
-                        {def?.name || 'Turno Mañana'} • {def?.defaultStartTime && def?.defaultEndTime ? `${def.defaultStartTime} - ${def.defaultEndTime}` : (shift?.startTime && shift?.endTime ? `${shift.startTime} - ${shift.endTime}` : 'Mañana')}
+                        {def?.name || 'Turno Mañana'} • {shift?.startTime && shift?.endTime ? `${shift.startTime} - ${shift.endTime}` : (def?.defaultStartTime && def?.defaultEndTime ? `${def.defaultStartTime} - ${def.defaultEndTime}` : 'Mañana')}
                       </span>
                     </div>
                   </div>
@@ -424,7 +424,7 @@ export const SupervisorView: React.FC = () => {
                         {workerName}
                       </span>
                       <span className="text-[10px] font-bold text-orange-700 dark:text-orange-400 block">
-                        {def?.name || 'Turno Tarde'} • {def?.defaultStartTime && def?.defaultEndTime ? `${def.defaultStartTime} - ${def.defaultEndTime}` : (shift?.startTime && shift?.endTime ? `${shift.startTime} - ${shift.endTime}` : 'Tarde')}
+                        {def?.name || 'Turno Tarde'} • {shift?.startTime && shift?.endTime ? `${shift.startTime} - ${shift.endTime}` : (def?.defaultStartTime && def?.defaultEndTime ? `${def.defaultStartTime} - ${def.defaultEndTime}` : 'Tarde')}
                       </span>
                     </div>
                   </div>

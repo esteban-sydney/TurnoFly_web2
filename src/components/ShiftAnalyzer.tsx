@@ -30,6 +30,11 @@ import { DayShift, ShiftCategory } from '../types';
 import { COMMON_SHIFT_DEFINITIONS, categorizeCode } from '../utils/excelParser';
 import { sanitizeClonedDocForHtml2Canvas } from '../utils/html2canvasFix';
 import { normalizeWorkerName } from '../utils/workerImportMerge';
+import {
+  fromTimeInputValue,
+  hasCustomShiftHours,
+  toTimeInputValue,
+} from '../utils/shiftTime';
 
 interface ShiftAnalyzerProps {
   onOpenShareModal?: () => void;
@@ -233,9 +238,9 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
       const shift = activeWorker.shifts[dateStr];
       const code = shift?.rawCode || 'L';
       const def = categorizeCode(code);
-      const startTime = def?.defaultStartTime || shift?.startTime;
-      const endTime = def?.defaultEndTime || shift?.endTime;
-      const isWorkDay = def ? def.isWorkDay : shift?.isWorkDay;
+      const startTime = shift?.startTime || def.defaultStartTime;
+      const endTime = shift?.endTime || def.defaultEndTime;
+      const isWorkDay = shift?.isWorkDay ?? def.isWorkDay;
       const time = isWorkDay && startTime ? ` (${startTime} - ${endTime})` : '';
       summaryText += `${d}/${formattedMonth}: [${code}]${time}\n`;
     }
@@ -330,9 +335,9 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
       const shift = activeWorker.shifts[dateStr];
       const code = shift?.rawCode || 'L';
       const def = categorizeCode(code);
-      const startTime = def?.defaultStartTime || shift?.startTime;
-      const endTime = def?.defaultEndTime || shift?.endTime;
-      const isWorkDay = def ? def.isWorkDay : shift?.isWorkDay;
+      const startTime = shift?.startTime || def.defaultStartTime;
+      const endTime = shift?.endTime || def.defaultEndTime;
+      const isWorkDay = shift?.isWorkDay ?? def.isWorkDay;
       const time = isWorkDay && startTime ? ` (${startTime} - ${endTime})` : '';
       text += `Día ${d}: [${code}]${time}\n`;
     }
@@ -568,6 +573,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                   const shift = activeWorker?.shifts?.[dateStr];
                   const code = shift?.rawCode || 'L';
                   const def = categorizeCode(code);
+                  const hasCustomHours = hasCustomShiftHours(shift, def);
 
                   const today = new Date();
                   const isToday = activeYear === today.getFullYear() && activeMonth === (today.getMonth() + 1) && dayNum === today.getDate();
@@ -576,11 +582,19 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                     <button
                       key={dateStr}
                       onClick={() => handleOpenEdit(dateStr, shift)}
-                      className={`h-12 sm:h-16 p-1 rounded-xl border flex flex-col justify-between items-center transition-all cursor-pointer active:scale-95 shadow-2xs relative ${
+                      aria-label={`${dateStr}, turno ${code}${hasCustomHours ? ', horario ajustado' : ''}`}
+                      title={
+                        hasCustomHours
+                          ? `Horario ajustado: ${shift?.startTime} - ${shift?.endTime}`
+                          : undefined
+                      }
+                      className={`h-12 sm:h-16 p-1 rounded-xl border flex flex-col justify-between items-center transition-all duration-200 ease-out cursor-pointer active:scale-95 hover:-translate-y-0.5 shadow-2xs relative ${
                         isToday
                           ? 'ring-4 ring-amber-400 dark:ring-amber-400 shadow-lg shadow-amber-500/40 z-20 scale-[1.04] border-amber-400 bg-gradient-to-b from-amber-200/90 via-amber-100 to-white dark:from-amber-950/80 dark:via-slate-900 dark:to-slate-900'
+                          : hasCustomHours
+                          ? 'ring-2 ring-sky-500 shadow-sm shadow-sky-500/30'
                           : shift?.editedManually
-                          ? 'ring-2 ring-indigo-500 hover:shadow-sm'
+                          ? 'ring-1 ring-indigo-400 hover:shadow-sm'
                           : 'hover:shadow-sm'
                       } ${def.color}`}
                     >
@@ -594,6 +608,13 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                           <span className="px-1 py-0.2 text-[7px] sm:text-[8px] font-black uppercase tracking-tighter bg-amber-400 text-slate-950 rounded-full shadow-xs animate-pulse">
                             HOY
                           </span>
+                        ) : hasCustomHours ? (
+                          <span
+                            className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-600 text-white shadow-sm"
+                            aria-label="Horario ajustado"
+                          >
+                            <Clock className="h-2.5 w-2.5" />
+                          </span>
                         ) : shift?.isRemote ? (
                           <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse" title="Teletrabajo" />
                         ) : null}
@@ -605,6 +626,9 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                           {code}
                         </span>
                       </div>
+                      {hasCustomHours && (
+                        <span className="pointer-events-none absolute inset-x-1 bottom-0.5 h-0.5 rounded-full bg-sky-600 dark:bg-sky-400" />
+                      )}
                     </button>
                   );
                 })}
@@ -706,16 +730,16 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
 
               {/* Start & End Times */}
               {editIsWorkDay && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                   <div className="min-w-0">
                     <label className="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                       {getTranslation(lang, 'startTimeLabel')}
                     </label>
                     <input
                       type="time"
-                      value={editStartTime}
+                      value={toTimeInputValue(editStartTime)}
                       onChange={(e) => setEditStartTime(e.target.value)}
-                      className="w-full p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-sky-500 transition-all cursor-pointer"
+                      className="block min-w-0 max-w-full w-full h-11 px-3 py-0 box-border rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-sky-500 transition-all cursor-pointer"
                     />
                   </div>
                   <div className="min-w-0">
@@ -724,10 +748,40 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                     </label>
                     <input
                       type="time"
-                      value={editEndTime}
-                      onChange={(e) => setEditEndTime(e.target.value)}
-                      className="w-full p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-sky-500 transition-all cursor-pointer"
+                      value={toTimeInputValue(editEndTime)}
+                      onChange={(e) =>
+                        setEditEndTime(
+                          fromTimeInputValue(
+                            e.target.value,
+                            categorizeCode(editCode).defaultEndTime
+                          )
+                        )
+                      }
+                      className="block min-w-0 max-w-full w-full h-11 px-3 py-0 box-border rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-sky-500 transition-all cursor-pointer"
                     />
+                  </div>
+                  <div className="col-span-2 min-h-4 -mt-1">
+                    {editEndTime === '24:00' ? (
+                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        00:00 corresponde al cierre a medianoche (24:00).
+                      </p>
+                    ) : hasCustomShiftHours(
+                        {
+                          date: selectedDate,
+                          rawCode: editCode,
+                          category: editCategory,
+                          startTime: editStartTime,
+                          endTime: editEndTime,
+                          isWorkDay: editIsWorkDay,
+                          editedManually: true,
+                        },
+                        categorizeCode(editCode)
+                      ) ? (
+                      <p className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 dark:text-sky-300">
+                        <Clock className="h-3 w-3" />
+                        Horario ajustado solo para este día.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               )}

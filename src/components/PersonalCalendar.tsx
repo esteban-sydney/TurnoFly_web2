@@ -220,19 +220,28 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
     }
   };
 
-  const handleAddToGoogleCalendar = () => {
-    if (!calendarEventToExport || isExportingCalendar) return;
-
-    try {
-      const googleCalendarUrl = buildGoogleCalendarUrl(calendarEventToExport);
-      window.open(googleCalendarUrl, '_blank', 'noopener,noreferrer');
-      setCalendarEventToExport(null);
-      setSaveToast('Google Calendar abierto. Confirma el evento para guardarlo.');
-      window.setTimeout(() => setSaveToast(null), 6000);
-    } catch {
-      setSaveToast('No se pudo abrir Google Calendar. Inténtalo nuevamente.');
+  const handleGoogleCalendarOpened = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isExportingCalendar || !googleCalendarUrl) {
+      event.preventDefault();
+      if (!googleCalendarUrl) {
+        setSaveToast('No se pudo preparar Google Calendar. Revisa la fecha y las horas.');
+      }
+      return;
     }
+
+    setSaveToast('Google Calendar abierto. Confirma el evento para guardarlo.');
+    window.setTimeout(() => setCalendarEventToExport(null), 1000);
+    window.setTimeout(() => setSaveToast(null), 6000);
   };
+
+  let googleCalendarUrl: string | undefined;
+  try {
+    googleCalendarUrl = calendarEventToExport
+      ? buildGoogleCalendarUrl(calendarEventToExport)
+      : undefined;
+  } catch {
+    googleCalendarUrl = undefined;
+  }
 
   const getTypeIcon = (t: PersonalEvent['type']) => {
     switch (t) {
@@ -294,15 +303,20 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                   )}
                   <span>{isExportingCalendar ? 'Abriendo...' : 'Calendario del teléfono'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleAddToGoogleCalendar}
-                  disabled={isExportingCalendar}
-                  className="min-h-10 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-70"
+                <a
+                  href={googleCalendarUrl}
+                  target="_blank"
+                  rel="noopener noreferrer external"
+                  referrerPolicy="no-referrer"
+                  onClick={handleGoogleCalendarOpened}
+                  aria-disabled={isExportingCalendar}
+                  className={`min-h-10 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 active:scale-[0.97] transition-all font-black text-[11px] flex items-center justify-center gap-1.5 ${
+                    isExportingCalendar ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span>Google Calendar</span>
-                </button>
+                </a>
               </>
             )}
           </div>

@@ -165,6 +165,8 @@ export function syncWorkersShiftTimes(workersList: WorkerProfile[]): WorkerProfi
 
     Object.keys(updatedShifts).forEach((dateKey) => {
       const shift = updatedShifts[dateKey];
+      if (shift?.editedManually) return;
+
       if (shift && shift.rawCode) {
         const def = categorizeCode(shift.rawCode);
         if (def) {
