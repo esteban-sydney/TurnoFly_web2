@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { ShiftCategory, ShiftCodeDefinition, WorkerProfile, DayShift, ShiftEntry } from '../types';
 
 export const COMMON_SHIFT_DEFINITIONS: Record<string, ShiftCodeDefinition> = {
@@ -371,6 +370,7 @@ export async function parseExcelBuffer(
   targetMonth?: number,
   outOfRangePolicy: OutOfRangePolicy = 'ignore'
 ): Promise<ParseExcelResult> {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
   const firstSheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[firstSheetName];
@@ -663,7 +663,8 @@ export async function parseExcelBuffer(
   };
 }
 
-export function generateSampleExcelBuffer(): Uint8Array {
+export async function generateSampleExcelBuffer(): Promise<Uint8Array> {
+  const XLSX = await import('xlsx');
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;

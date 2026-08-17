@@ -266,15 +266,22 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     if (!onFinished) onClose();
   };
 
-  const handleDownloadSample = () => {
-    const buffer = generateSampleExcelBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `TurnoFly_Planilla_${MONTH_NAMES_ES[refMonth - 1]}_${refYear}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownloadSample = async () => {
+    try {
+      const buffer = await generateSampleExcelBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TurnoFly_Planilla_${MONTH_NAMES_ES[refMonth - 1]}_${refYear}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating sample spreadsheet:', error);
+      setErrorMessage('No se pudo generar la planilla de ejemplo. Inténtalo nuevamente.');
+    }
   };
 
   const handleLoadDemo = () => {

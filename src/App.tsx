@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -6,16 +6,49 @@ import { Splash } from './components/Splash';
 import { AuthScreen } from './components/AuthScreen';
 import { Header } from './components/Header';
 import { HomeDashboard } from './components/HomeDashboard';
-import { ShiftAnalyzer } from './components/ShiftAnalyzer';
-import { PersonalCalendar } from './components/PersonalCalendar';
-import { SupervisorView } from './components/SupervisorView';
-import { ExcelImportModal } from './components/ExcelImportModal';
-import { EvidenceModal } from './components/EvidenceModal';
-import { SettingsModal } from './components/SettingsModal';
-import { ShareImageModal } from './components/ShareImageModal';
 import { Trash2, RotateCcw, Home, Calendar, Clock, Users, LoaderCircle } from 'lucide-react';
 import { getTranslation } from './utils/i18n';
 import { buttonMotion } from './utils/motionVariants';
+
+const ShiftAnalyzer = lazy(() =>
+  import('./components/ShiftAnalyzer').then((module) => ({ default: module.ShiftAnalyzer }))
+);
+const PersonalCalendar = lazy(() =>
+  import('./components/PersonalCalendar').then((module) => ({ default: module.PersonalCalendar }))
+);
+const SupervisorView = lazy(() =>
+  import('./components/SupervisorView').then((module) => ({ default: module.SupervisorView }))
+);
+const ExcelImportModal = lazy(() =>
+  import('./components/ExcelImportModal').then((module) => ({ default: module.ExcelImportModal }))
+);
+const EvidenceModal = lazy(() =>
+  import('./components/EvidenceModal').then((module) => ({ default: module.EvidenceModal }))
+);
+const SettingsModal = lazy(() =>
+  import('./components/SettingsModal').then((module) => ({ default: module.SettingsModal }))
+);
+const ShareImageModal = lazy(() =>
+  import('./components/ShareImageModal').then((module) => ({ default: module.ShareImageModal }))
+);
+
+function ViewLoading() {
+  return (
+    <div className="flex min-h-[45vh] items-center justify-center text-indigo-600 dark:text-indigo-300">
+      <LoaderCircle className="h-7 w-7 animate-spin" aria-hidden="true" />
+      <span className="sr-only">Cargando pantalla</span>
+    </div>
+  );
+}
+
+function ModuleLoadingOverlay() {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-sm">
+      <LoaderCircle className="h-8 w-8 animate-spin text-white" aria-hidden="true" />
+      <span className="sr-only">Cargando módulo</span>
+    </div>
+  );
+}
 
 function AppMain() {
   const { signOut } = useAuth();
@@ -173,64 +206,66 @@ function AppMain() {
 
       {/* Main View Area */}
       <main className="flex-1 pb-24 w-full max-w-full overflow-x-hidden">
-        <AnimatePresence mode="wait" initial={false}>
-          {activeView === 'home' && (
-            <motion.div
-              key="home"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -24 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-            >
-              <HomeDashboard
-                onOpenImport={() => setIsImportOpen(true)}
-                onOpenPersonalEvent={openPersonalEvent}
-                setActiveView={setActiveView}
-                onConfirmClearShifts={openClearShiftsDialog}
-                onConfirmResetApp={() => setConfirmResetOpen(true)}
-              />
-            </motion.div>
-          )}
+        <Suspense fallback={<ViewLoading />}>
+          <AnimatePresence mode="wait" initial={false}>
+            {activeView === 'home' && (
+              <motion.div
+                key="home"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -24 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <HomeDashboard
+                  onOpenImport={() => setIsImportOpen(true)}
+                  onOpenPersonalEvent={openPersonalEvent}
+                  setActiveView={setActiveView}
+                  onConfirmClearShifts={openClearShiftsDialog}
+                  onConfirmResetApp={() => setConfirmResetOpen(true)}
+                />
+              </motion.div>
+            )}
 
-          {activeView === 'shifts' && (
-            <motion.div
-              key="shifts"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -24 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-            >
-              <ShiftAnalyzer onOpenShareModal={() => setIsShareModalOpen(true)} />
-            </motion.div>
-          )}
+            {activeView === 'shifts' && (
+              <motion.div
+                key="shifts"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -24 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <ShiftAnalyzer onOpenShareModal={() => setIsShareModalOpen(true)} />
+              </motion.div>
+            )}
 
-          {activeView === 'personal' && (
-            <motion.div
-              key="personal"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -24 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-            >
-              <PersonalCalendar
-                focusedEventId={focusedPersonalEventId}
-                onFocusedEventHandled={() => setFocusedPersonalEventId(null)}
-              />
-            </motion.div>
-          )}
+            {activeView === 'personal' && (
+              <motion.div
+                key="personal"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -24 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <PersonalCalendar
+                  focusedEventId={focusedPersonalEventId}
+                  onFocusedEventHandled={() => setFocusedPersonalEventId(null)}
+                />
+              </motion.div>
+            )}
 
-          {activeView === 'supervisor' && (
-            <motion.div
-              key="supervisor"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -24 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-            >
-              <SupervisorView />
-            </motion.div>
-          )}
-        </AnimatePresence>
+            {activeView === 'supervisor' && (
+              <motion.div
+                key="supervisor"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -24 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <SupervisorView />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Suspense>
       </main>
 
       {/* Persistent Bottom Navigation Bar for Instant Fluid Navigation */}
@@ -328,31 +363,41 @@ function AppMain() {
       )}
 
       {/* Modals */}
-      <ShareImageModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-      />
+      <Suspense fallback={<ModuleLoadingOverlay />}>
+        {isShareModalOpen && (
+          <ShareImageModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+          />
+        )}
 
-      <ExcelImportModal
-        isOpen={isImportOpen}
-        onClose={() => setIsImportOpen(false)}
-        onFinished={() => {
-          setIsImportOpen(false);
-          setActiveView('home');
-        }}
-      />
+        {isImportOpen && (
+          <ExcelImportModal
+            isOpen={isImportOpen}
+            onClose={() => setIsImportOpen(false)}
+            onFinished={() => {
+              setIsImportOpen(false);
+              setActiveView('home');
+            }}
+          />
+        )}
 
-      <EvidenceModal
-        isOpen={isEvidenceOpen}
-        onClose={() => setIsEvidenceOpen(false)}
-      />
+        {isEvidenceOpen && (
+          <EvidenceModal
+            isOpen={isEvidenceOpen}
+            onClose={() => setIsEvidenceOpen(false)}
+          />
+        )}
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onConfirmClearShifts={openClearShiftsDialog}
-        onConfirmResetApp={() => setConfirmResetOpen(true)}
-      />
+        {isSettingsOpen && (
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            onConfirmClearShifts={openClearShiftsDialog}
+            onConfirmResetApp={() => setConfirmResetOpen(true)}
+          />
+        )}
+      </Suspense>
 
       {/* Clear Shifts Confirmation Dialog */}
       {confirmClearOpen && (
