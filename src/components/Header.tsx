@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Plane, Moon, Sun, Globe, Settings, Users, User, Bell, LogOut, Cloud, CloudOff, LoaderCircle } from 'lucide-react';
+import { Calendar, Plane, Moon, Sun, Globe, Settings, Users, User, LogOut, Cloud, CloudOff, LoaderCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { getTranslation } from '../utils/i18n';
@@ -24,10 +24,9 @@ export const Header: React.FC<HeaderProps> = ({
   disableSupervisor = false,
   onSignOut,
 }) => {
-  const { settings, setTheme, setUserRole, events, cloudSyncStatus } = useApp();
+  const { settings, setTheme, setUserRole, cloudSyncStatus } = useApp();
   const { user } = useAuth();
   const lang = settings.language;
-  const eventCount = events.length;
   const accountEmail = user?.email || 'Cuenta TurnoFly';
   const isCloudBusy = cloudSyncStatus === 'loading' || cloudSyncStatus === 'saving';
   const cloudLabel =
@@ -83,23 +82,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Quick Controls for Mobile View (Right of Logo) */}
           <motion.div className="flex items-center gap-1.5 sm:hidden shrink-0">
-            {/* Appointment reminder bell */}
-            {eventCount > 0 && (
-              <motion.button
-                onClick={() => setActiveView('personal')}
-                className="relative p-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 animate-pulse cursor-pointer"
-                title={`${eventCount} citas registradas`}
-                whileHover={buttonMotion.whileHover}
-                whileTap={buttonMotion.whileTap}
-                transition={buttonMotion.transition}
-              >
-                <Bell className="w-4 h-4" />
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
-                  {eventCount}
-                </span>
-              </motion.button>
-            )}
-
             {/* Theme Toggle Button */}
             <motion.button
               onClick={() => setTheme(settings.theme === 'dark' ? 'light' : 'dark')}
@@ -187,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({
             </motion.button>
           </div>
 
-          {/* Desktop Controls (Theme + Conflicts + Settings) */}
+          {/* Desktop controls */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
             <div
               className="hidden lg:flex min-w-0 max-w-56 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
@@ -205,24 +187,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <CloudOff className="h-3.5 w-3.5 shrink-0 text-amber-600" />
               )}
             </div>
-
-            {/* Appointment reminder bell */}
-            {eventCount > 0 && (
-              <motion.button
-                onClick={() => setActiveView('personal')}
-                id="event-notification-btn"
-                className="relative p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 animate-pulse cursor-pointer shrink-0"
-                title={`${eventCount} citas registradas`}
-                whileHover={buttonMotion.whileHover}
-                whileTap={buttonMotion.whileTap}
-                transition={buttonMotion.transition}
-              >
-                <Bell className="w-4 h-4" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
-                  {eventCount}
-                </span>
-              </motion.button>
-            )}
 
             {/* Theme Toggle Button */}
             <motion.button
