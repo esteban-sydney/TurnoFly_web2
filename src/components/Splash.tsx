@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { CalendarDays, Clock } from 'lucide-react';
-import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
+import type { Language } from '../types';
 
 interface SplashProps {
   onFinish: () => void;
@@ -24,9 +24,9 @@ const brandOrigins = [
 ];
 
 export const Splash: React.FC<SplashProps> = ({ onFinish }) => {
-  const { settings } = useApp();
   const reduceMotion = useReducedMotion();
-  const lang = settings.language;
+  const browserLanguage = typeof navigator === 'undefined' ? 'es' : navigator.language.slice(0, 2);
+  const lang: Language = browserLanguage === 'en' || browserLanguage === 'pt' ? browserLanguage : 'es';
 
   useEffect(() => {
     const timer = window.setTimeout(onFinish, reduceMotion ? 900 : 5000);
