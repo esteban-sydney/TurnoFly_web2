@@ -298,7 +298,7 @@ function AppMain() {
           </Suspense>
         </div>
 
-        <div className="mt-auto pt-8">
+        <div className="mt-auto pt-4">
           <AppFooter />
         </div>
       </main>
