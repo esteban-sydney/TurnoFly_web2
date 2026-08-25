@@ -135,6 +135,10 @@ const isPersonalEvent = (value: unknown): value is PersonalEvent => {
     typeof value.id === 'string' &&
     value.id.length > 0 &&
     value.id.length <= 300 &&
+    isOptionalString(value.workerId) &&
+    (value.workerId === undefined || value.workerId.length <= 300) &&
+    isOptionalString(value.workerNameSnapshot) &&
+    (value.workerNameSnapshot === undefined || value.workerNameSnapshot.length <= 500) &&
     typeof value.title === 'string' &&
     value.title.trim().length > 0 &&
     value.title.length <= 500 &&

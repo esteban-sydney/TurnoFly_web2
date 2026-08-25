@@ -6,7 +6,16 @@ import { Splash } from './components/Splash';
 import { AuthScreen } from './components/AuthScreen';
 import { Header } from './components/Header';
 import { HomeDashboard } from './components/HomeDashboard';
-import { Trash2, RotateCcw, Home, Calendar, Clock, Users, LoaderCircle } from 'lucide-react';
+import {
+  Trash2,
+  RotateCcw,
+  Home,
+  Calendar,
+  Clock,
+  Users,
+  LoaderCircle,
+  UserRoundCheck,
+} from 'lucide-react';
 import { getTranslation } from './utils/i18n';
 import { buttonMotion } from './utils/motionVariants';
 
@@ -63,6 +72,11 @@ function AppMain() {
     shiftImports,
     setActiveYearMonth,
     setLastActiveView,
+    setActiveWorkerId,
+    activeWorker,
+    cloudSyncStatus,
+    unassignedEventCount,
+    assignUnassignedEvents,
   } = useApp();
   const lang = settings.language;
   const monthNames = getTranslation(lang, 'months') as string[];
@@ -150,6 +164,13 @@ function AppMain() {
   const [pendingShiftDeletion, setPendingShiftDeletion] = useState<string | null>(null);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [showResetAnimation, setShowResetAnimation] = useState(false);
+  const [legacyAssignmentWorkerId, setLegacyAssignmentWorkerId] = useState('');
+
+  useEffect(() => {
+    if (unassignedEventCount === 0 || workers.length === 0) return;
+    if (workers.some((worker) => worker.id === legacyAssignmentWorkerId)) return;
+    setLegacyAssignmentWorkerId(activeWorker?.id || workers[0].id);
+  }, [activeWorker?.id, legacyAssignmentWorkerId, unassignedEventCount, workers]);
 
   const handleResetFullApp = () => {
     resetFullApp();
@@ -398,6 +419,59 @@ function AppMain() {
           />
         )}
       </Suspense>
+
+      {cloudSyncStatus !== 'loading' && unassignedEventCount > 0 && workers.length > 0 && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
+                <UserRoundCheck className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+                  Organización de agenda
+                </p>
+                <h2 className="mt-1 text-lg font-black text-slate-950 dark:text-white">
+                  Asignar citas anteriores
+                </h2>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                  Encontramos {unassignedEventCount}{' '}
+                  {unassignedEventCount === 1 ? 'cita creada' : 'citas creadas'} antes de separar
+                  las agendas por trabajador. Selecciona a quién pertenecen para conservarlas.
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Trabajador de estas citas
+            </label>
+            <select
+              value={legacyAssignmentWorkerId}
+              onChange={(event) => setLegacyAssignmentWorkerId(event.target.value)}
+              className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            >
+              {workers.map((worker) => (
+                <option key={worker.id} value={worker.id}>
+                  {worker.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              disabled={!legacyAssignmentWorkerId}
+              onClick={() => {
+                assignUnassignedEvents(legacyAssignmentWorkerId);
+                setActiveWorkerId(legacyAssignmentWorkerId);
+              }}
+              className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <UserRoundCheck className="h-4 w-4" aria-hidden="true" />
+              Asignar y continuar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Clear Shifts Confirmation Dialog */}
       {confirmClearOpen && (

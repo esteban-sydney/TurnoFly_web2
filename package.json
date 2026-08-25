@@ -16,7 +16,8 @@
     "test:shift-editing": "tsx ./scripts/verifyShiftEditing.ts",
     "test:shift-periods": "tsx ./scripts/verifyShiftPeriodDeletion.ts",
     "test:calendar": "tsx ./scripts/verifyCalendarExport.ts",
-    "test:backup": "tsx ./scripts/verifyBackupValidation.ts"
+    "test:backup": "tsx ./scripts/verifyBackupValidation.ts",
+    "test:event-ownership": "tsx ./scripts/verifyPersonalEventOwnership.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

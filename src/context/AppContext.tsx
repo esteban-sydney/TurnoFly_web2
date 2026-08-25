@@ -33,6 +33,12 @@ import {
   saveUserAppSnapshot,
   type UserAppSnapshot,
 } from '../utils/cloudStorage';
+import {
+  assignUnassignedEventsToWorker,
+  getEventsForWorker,
+  reconcileEventWorkerReferences,
+  type PersonalEventInput,
+} from '../utils/personalEventOwnership';
 
 export type CloudSyncStatus = 'loading' | 'saving' | 'synced' | 'local' | 'error';
 
@@ -48,6 +54,7 @@ interface AppContextType {
   availableShiftPeriods: ShiftPeriod[];
   shiftImports: ShiftImportRecord[];
   cloudSyncStatus: CloudSyncStatus;
+  unassignedEventCount: number;
   
   // Actions
   setLanguage: (lang: Language) => void;
@@ -76,9 +83,10 @@ interface AppContextType {
   ) => void;
   
   // Events
-  addPersonalEvent: (event: Omit<PersonalEvent, 'id'>) => void;
+  addPersonalEvent: (event: PersonalEventInput) => void;
   updatePersonalEvent: (event: PersonalEvent) => void;
   deletePersonalEvent: (eventId: string) => void;
+  assignUnassignedEvents: (workerId: string) => void;
   
   // Evidence
   addEvidence: (item: HorarioEvidence) => void;
@@ -99,8 +107,10 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
   const initialData = useMemo(() => {
     const storedSettings = storage.getSettings();
     const saved = storage.getWorkers();
+    const storedEvents = storage.getEvents();
     let initialWorkers: WorkerProfile[] = [];
     let initialSettings = storedSettings;
+    let initialEvents = storedEvents;
 
     if (saved && saved.length > 0) {
       const sanitized = saved.filter((w) => isRealPersonName(w.name));
@@ -117,7 +127,15 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
           activeWorkerId: mappedActiveWorkerId,
         };
         initialWorkers = synced;
+        initialEvents = reconcileEventWorkerReferences(
+          storedEvents,
+          synced,
+          consolidated.idAliases
+        );
         storage.saveWorkers(synced);
+        if (initialEvents !== storedEvents) {
+          storage.saveEvents(initialEvents);
+        }
         if (mappedActiveWorkerId !== storedSettings.activeWorkerId) {
           storage.saveSettings(initialSettings);
         }
@@ -127,7 +145,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
     return {
       settings: initialSettings,
       workers: initialWorkers,
-      events: storage.getEvents(),
+      events: initialEvents,
       evidence: storage.getEvidence(),
     };
   }, [storage]);
@@ -205,10 +223,15 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
             ? consolidated.idAliases.get(result.snapshot.settings.activeWorkerId)
             : undefined,
         };
+        const remoteEvents = reconcileEventWorkerReferences(
+          result.snapshot.events,
+          syncedWorkers,
+          consolidated.idAliases
+        );
 
         setSettings(remoteSettings);
         setWorkers(syncedWorkers);
-        setEvents(result.snapshot.events);
+        setEvents(remoteEvents);
         setEvidence(result.snapshot.evidence);
         setActiveYear(
           remoteSettings.referenceYear ||
@@ -287,9 +310,23 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
     return realWorkers.find((w) => w.id === settings.activeWorkerId) || realWorkers[0];
   }, [workers, settings.activeWorkerId]);
 
+  const activeWorkerEvents = useMemo(
+    () => getEventsForWorker(events, activeWorker?.id),
+    [events, activeWorker?.id]
+  );
+
+  const unassignedEventCount = useMemo(
+    () => events.filter((event) => !event.workerId).length,
+    [events]
+  );
+
+  useEffect(() => {
+    setEvents((currentEvents) => reconcileEventWorkerReferences(currentEvents, workers));
+  }, [workers]);
+
   const conflicts = useMemo(() => {
-    return detectScheduleConflicts(events, activeWorker, settings.dismissedConflicts);
-  }, [events, activeWorker, settings.dismissedConflicts]);
+    return detectScheduleConflicts(activeWorkerEvents, activeWorker, settings.dismissedConflicts);
+  }, [activeWorkerEvents, activeWorker, settings.dismissedConflicts]);
 
   const availableShiftPeriods = useMemo<ShiftPeriod[]>(() => {
     const periodKeys = new Set<string>();
@@ -550,20 +587,43 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
     );
   };
 
-  const addPersonalEvent = (eventData: Omit<PersonalEvent, 'id'>) => {
+  const addPersonalEvent = (eventData: PersonalEventInput) => {
+    if (!activeWorker) return;
     const newEvent: PersonalEvent = {
       ...eventData,
       id: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      workerId: activeWorker.id,
+      workerNameSnapshot: activeWorker.name,
     };
     setEvents((prev) => [...prev, newEvent]);
   };
 
   const updatePersonalEvent = (updatedEvent: PersonalEvent) => {
-    setEvents((prev) => prev.map((evt) => (evt.id === updatedEvent.id ? updatedEvent : evt)));
+    if (!activeWorker) return;
+    setEvents((prev) =>
+      prev.map((event) =>
+        event.id === updatedEvent.id && event.workerId === activeWorker.id
+          ? {
+              ...updatedEvent,
+              workerId: activeWorker.id,
+              workerNameSnapshot: activeWorker.name,
+            }
+          : event
+      )
+    );
   };
 
   const deletePersonalEvent = (eventId: string) => {
-    setEvents((prev) => prev.filter((evt) => evt.id !== eventId));
+    if (!activeWorker) return;
+    setEvents((prev) =>
+      prev.filter((event) => event.id !== eventId || event.workerId !== activeWorker.id)
+    );
+  };
+
+  const assignUnassignedEvents = (workerId: string) => {
+    const worker = workers.find((item) => item.id === workerId);
+    if (!worker) return;
+    setEvents((prev) => assignUnassignedEventsToWorker(prev, worker));
   };
 
   const addEvidence = (item: HorarioEvidence) => {
@@ -647,7 +707,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
       value={{
         settings,
         workers,
-        events,
+        events: activeWorkerEvents,
         evidence,
         activeWorker,
         conflicts,
@@ -656,6 +716,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         availableShiftPeriods,
         shiftImports,
         cloudSyncStatus,
+        unassignedEventCount,
         setLanguage,
         setTheme,
         setUserRole,
@@ -670,6 +731,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         addPersonalEvent,
         updatePersonalEvent,
         deletePersonalEvent,
+        assignUnassignedEvents,
         addEvidence,
         deleteEvidence,
         clearShiftsOnly,

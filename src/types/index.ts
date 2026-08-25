@@ -75,6 +75,8 @@ export interface ShiftImportRecord extends ShiftPeriod {
 
 export interface PersonalEvent {
   id: string;
+  workerId?: string;
+  workerNameSnapshot?: string;
   title: string;
   type: 'medical' | 'gym' | 'family' | 'study' | 'work' | 'other';
   date: string; // YYYY-MM-DD

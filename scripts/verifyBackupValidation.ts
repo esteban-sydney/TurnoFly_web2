@@ -54,6 +54,8 @@ const worker: WorkerProfile = {
 
 const event: PersonalEvent = {
   id: 'event-1',
+  workerId: worker.id,
+  workerNameSnapshot: worker.name,
   title: 'Control médico',
   type: 'medical',
   date: '2026-08-18',
@@ -70,6 +72,12 @@ const backup = sourceStorage.exportBackupData();
 const targetStorage = createUserStorage('target-user');
 assert.equal(targetStorage.importBackupData(backup), true);
 assert.deepEqual(targetStorage.getWorkers(), [worker]);
+assert.deepEqual(targetStorage.getEvents(), [event]);
+
+const invalidEventOwnerBackup = JSON.stringify({
+  events: [{ ...event, workerId: 123 }],
+});
+assert.equal(targetStorage.importBackupData(invalidEventOwnerBackup), false);
 assert.deepEqual(targetStorage.getEvents(), [event]);
 
 const workersBeforeInvalidImport = targetStorage.getWorkers();

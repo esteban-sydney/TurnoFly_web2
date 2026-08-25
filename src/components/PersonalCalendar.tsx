@@ -44,6 +44,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
     activeYear,
     activeMonth,
     setActiveYearMonth,
+    activeWorker,
   } = useApp();
 
   const lang = settings.language;
@@ -67,6 +68,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [calendarEventToExport, setCalendarEventToExport] = useState<CalendarExportEvent | null>(null);
   const handleOpenAdd = (defaultDateStr?: string) => {
+    if (!activeWorker) return;
     setEditingEvent(null);
     setTitle('');
     setType('medical');
@@ -114,6 +116,12 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
 
     onFocusedEventHandled?.();
   }, [focusedEventId, events]);
+
+  useEffect(() => {
+    if (!editingEvent || editingEvent.workerId === activeWorker?.id) return;
+    setEditingEvent(null);
+    setIsModalOpen(false);
+  }, [activeWorker?.id, editingEvent]);
 
   const requestNotificationPermission = async () => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -330,10 +338,17 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
       {/* Calendar header */}
       <div className="p-4 sm:p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h1 className="flex items-center gap-2 text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-            <CalendarIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <span>Agenda Personal y Citas</span>
-          </h1>
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              <CalendarIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>Agenda Personal y Citas</span>
+            </h1>
+            {activeWorker && (
+              <p className="mt-1 truncate pl-7 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Citas de {activeWorker.name}
+              </p>
+            )}
+          </div>
 
           {/* Controls Cluster */}
           <div className="flex flex-wrap items-center gap-2">
@@ -359,8 +374,9 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
             {/* Add Event Button */}
             <button
               onClick={() => handleOpenAdd()}
+              disabled={!activeWorker}
               id="add-personal-event-btn"
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
               <span>+ Cita</span>
@@ -484,6 +500,14 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
             </div>
 
             <form onSubmit={handleSaveEvent} className="space-y-4 text-xs">
+              {activeWorker && (
+                <div className="flex items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+                  <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate font-semibold">
+                    Cita para <strong>{activeWorker.name}</strong>
+                  </span>
+                </div>
+              )}
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {getTranslation(lang, 'eventTitle')}
