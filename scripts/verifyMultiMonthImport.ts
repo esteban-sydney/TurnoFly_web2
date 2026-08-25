@@ -6,10 +6,12 @@ import {
   generateSampleExcelBuffer,
   hydrateShiftDefinitionsFromWorkers,
   parseExcelBuffer,
+  parseExcelWorkbookBuffer,
   syncWorkersShiftTimes,
 } from '../src/utils/excelParser';
 import {
   assignWorkersToReferencePeriod,
+  getWorkerIdentityKey,
   mergeImportedWorkersForPeriod,
   normalizeWorkerName,
   resolveImportedWorkerId,
@@ -370,6 +372,82 @@ assert.ok(parsedGamma, 'El parser debe detectar a una persona nueva.');
 assert.equal(parsedAlpha.shifts['2026-09-01'].rawCode, 'T');
 assert.equal(parsedAlpha.shifts['2026-09-02'].rawCode, 'M');
 assert.equal(parsedGamma.shifts['2026-09-02'].rawCode, 'L');
+
+const verticalWorkbook = XLSX.utils.book_new();
+const verticalWorksheet = XLSX.utils.aoa_to_sheet([
+  ['PROGRAMACION ANUAL DE TURNOS 2027'],
+  [],
+  ['ENERO'],
+  ['Trabajador', 1, 2, 3, 4, 5, 6, 7],
+  ['Persona Alfa Principal', 'L', 'M', 'T', 'N', 'L', 'A', 'M'],
+  ['Persona Beta Secundaria', 'M', 'M', 'L', 'T', 'N', 'L', 'A'],
+  [],
+  ['FEBRERO'],
+  ['Trabajador', 1, 2, 3, 4, 5, 6, 7],
+  ['Persona Alfa', 'M', 'T', 'N', 'L', 'A', 'M', 'T'],
+  ['Persona Gamma Nueva', 'L', 'L', 'M', 'M', 'T', 'T', 'N'],
+  [],
+  ['MARZO'],
+  ['Trabajador', 1, 2, 3, 4, 5, 6, 7],
+  ['Persona Alfa Principal', 'N', 'L', 'M', 'T', 'A', 'L', 'M'],
+  ['Persona Beta Secundaria', 'T', 'N', 'L', 'M', 'M', 'A', 'L'],
+]);
+XLSX.utils.book_append_sheet(verticalWorkbook, verticalWorksheet, 'Programacion Anual');
+const verticalOutput = XLSX.write(verticalWorkbook, {
+  type: 'array',
+  bookType: 'xlsx',
+}) as ArrayBuffer | Uint8Array;
+const verticalBuffer =
+  verticalOutput instanceof ArrayBuffer
+    ? verticalOutput
+    : (verticalOutput.buffer.slice(
+        verticalOutput.byteOffset,
+        verticalOutput.byteOffset + verticalOutput.byteLength
+      ) as ArrayBuffer);
+const parsedVerticalWorkbook = await parseExcelWorkbookBuffer(
+  verticalBuffer,
+  2026,
+  1,
+  'ignore'
+);
+
+assert.equal(
+  parsedVerticalWorkbook.months.length,
+  3,
+  'Una hoja con tres bloques mensuales debe producir tres periodos.'
+);
+assert.deepEqual(
+  parsedVerticalWorkbook.months.map((item) => [item.year, item.month]),
+  [
+    [2027, 1],
+    [2027, 2],
+    [2027, 3],
+  ]
+);
+assert.equal(parsedVerticalWorkbook.skippedBlocks.length, 0);
+assert.equal(
+  parsedVerticalWorkbook.months[0].workers.find(
+    (worker) => worker.name === 'Persona Alfa Principal'
+  )?.shifts['2027-01-02'].rawCode,
+  'M'
+);
+assert.equal(
+  parsedVerticalWorkbook.months[1].workers.find(
+    (worker) => worker.name === 'Persona Alfa'
+  )?.shifts['2027-02-02'].rawCode,
+  'T'
+);
+assert.equal(
+  parsedVerticalWorkbook.months[2].workers.find(
+    (worker) => worker.name === 'Persona Alfa Principal'
+  )?.shifts['2027-03-01'].rawCode,
+  'N'
+);
+assert.equal(
+  getWorkerIdentityKey(parsedVerticalWorkbook.months[0].workers[0].name),
+  getWorkerIdentityKey(parsedVerticalWorkbook.months[1].workers[0].name),
+  'El nombre abreviado del segundo mes debe mantener la misma identidad.'
+);
 
 const parsedMerge = mergeImportedWorkersForPeriod(
   augustWorkers,

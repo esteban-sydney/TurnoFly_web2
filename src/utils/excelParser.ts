@@ -364,6 +364,163 @@ export interface ParseExcelResult {
   hasMonthMismatch: boolean;
 }
 
+export interface SkippedExcelMonthBlock {
+  sheetName: string;
+  month: number;
+  year: number;
+  reason: string;
+}
+
+export interface ParseExcelWorkbookResult {
+  months: ParseExcelResult[];
+  detectedBlockCount: number;
+  skippedBlocks: SkippedExcelMonthBlock[];
+}
+
+interface ExcelMonthBlock {
+  sheetName: string;
+  rows: any[][];
+  headingRowIndex: number;
+  headerRowIndex: number;
+  month: number;
+  explicitYear: number | null;
+  sheetYear: number | null;
+}
+
+const MULTI_MONTH_ALIASES = [
+  ['enero', 'january'],
+  ['febrero', 'february'],
+  ['marzo', 'march'],
+  ['abril', 'april'],
+  ['mayo', 'may'],
+  ['junio', 'june'],
+  ['julio', 'july'],
+  ['agosto', 'august'],
+  ['septiembre', 'septimebre', 'september'],
+  ['octubre', 'october'],
+  ['noviembre', 'november'],
+  ['diciembre', 'december'],
+] as const;
+
+function normalizeExcelHeading(value: unknown): string {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9/\-]+/g, ' ')
+    .trim();
+}
+
+function detectExplicitMonthHeading(row: any[]): {
+  month: number;
+  year: number | null;
+} | null {
+  const text = normalizeExcelHeading(row.join(' '));
+  if (!text) return null;
+
+  const yearMatch = text.match(/\b(20\d{2})\b/);
+  const numericMatch = text.match(/\b(0?[1-9]|1[0-2])\s*[\/\-]\s*(20\d{2})\b/);
+  if (numericMatch) {
+    return {
+      month: Number(numericMatch[1]),
+      year: Number(numericMatch[2]),
+    };
+  }
+
+  for (let index = 0; index < MULTI_MONTH_ALIASES.length; index += 1) {
+    const aliases = MULTI_MONTH_ALIASES[index];
+    if (aliases.some((alias) => new RegExp(`(^|\\s)${alias}(?=\\s|$)`, 'i').test(text))) {
+      return {
+        month: index + 1,
+        year: yearMatch ? Number(yearMatch[1]) : null,
+      };
+    }
+  }
+
+  return null;
+}
+
+function getExcelDayNumber(value: unknown): number | null {
+  if (value instanceof Date) return value.getDate();
+
+  const text = String(value ?? '').trim();
+  if (/^\d{1,2}$/.test(text)) {
+    const day = Number(text);
+    return day >= 1 && day <= 31 ? day : null;
+  }
+
+  const dateMatch = text.match(/^(0?[1-9]|[12][0-9]|3[01])[\/\-]/);
+  return dateMatch ? Number(dateMatch[1]) : null;
+}
+
+function hasDaySequenceStartingAtOne(row: any[]): boolean {
+  const numericCells = row
+    .map((value, colIndex) => ({ day: getExcelDayNumber(value), colIndex }))
+    .filter((item): item is { day: number; colIndex: number } => item.day !== null)
+    .sort((left, right) => left.colIndex - right.colIndex);
+  const dayOnePositions = numericCells
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.day === 1);
+
+  return dayOnePositions.some(({ index }) => {
+    let expectedDay = 1;
+    let sequenceLength = 0;
+
+    for (let cursor = index; cursor < numericCells.length; cursor += 1) {
+      if (numericCells[cursor].day === expectedDay) {
+        sequenceLength += 1;
+        expectedDay += 1;
+      } else if (numericCells[cursor].day > expectedDay) {
+        break;
+      }
+    }
+
+    return sequenceLength >= 5;
+  });
+}
+
+function detectMonthBlocks(sheetName: string, rows: any[][]): ExcelMonthBlock[] {
+  const blocksByHeader = new Map<number, ExcelMonthBlock>();
+  const sheetYearMatch = normalizeExcelHeading(
+    rows.slice(0, 20).flat().join(' ')
+  ).match(/\b(20\d{2})\b/);
+  const sheetYear = sheetYearMatch ? Number(sheetYearMatch[1]) : null;
+
+  rows.forEach((row, headingRowIndex) => {
+    const heading = detectExplicitMonthHeading(row || []);
+    if (!heading) return;
+
+    let headerRowIndex = -1;
+    const lastCandidateRow = Math.min(rows.length - 1, headingRowIndex + 8);
+    for (let cursor = headingRowIndex; cursor <= lastCandidateRow; cursor += 1) {
+      if (cursor > headingRowIndex && detectExplicitMonthHeading(rows[cursor] || [])) break;
+      if (hasDaySequenceStartingAtOne(rows[cursor] || [])) {
+        headerRowIndex = cursor;
+        break;
+      }
+    }
+
+    if (headerRowIndex === -1) return;
+
+    const existing = blocksByHeader.get(headerRowIndex);
+    if (!existing || headingRowIndex > existing.headingRowIndex) {
+      blocksByHeader.set(headerRowIndex, {
+        sheetName,
+        rows,
+        headingRowIndex,
+        headerRowIndex,
+        month: heading.month,
+        explicitYear: heading.year,
+        sheetYear,
+      });
+    }
+  });
+
+  return Array.from(blocksByHeader.values()).sort(
+    (left, right) => left.headingRowIndex - right.headingRowIndex
+  );
+}
+
 export async function parseExcelBuffer(
   buffer: ArrayBuffer,
   targetYear?: number,
@@ -660,6 +817,124 @@ export async function parseExcelBuffer(
     sourceSheetName: firstSheetName,
     outOfRangeDaysCount: totalOutOfRangeCount,
     hasMonthMismatch,
+  };
+}
+
+export async function parseExcelWorkbookBuffer(
+  buffer: ArrayBuffer,
+  targetYear?: number,
+  targetMonth?: number,
+  outOfRangePolicy: OutOfRangePolicy = 'ignore'
+): Promise<ParseExcelWorkbookResult> {
+  const XLSX = await import('xlsx');
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  const detectedBlocks = workbook.SheetNames.flatMap((sheetName) => {
+    const rows: any[][] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      header: 1,
+      defval: '',
+    });
+    return detectMonthBlocks(sheetName, rows);
+  });
+
+  // A workbook with zero or one block keeps the established reference-month workflow.
+  if (detectedBlocks.length < 2) {
+    return {
+      months: [await parseExcelBuffer(buffer, targetYear, targetMonth, outOfRangePolicy)],
+      detectedBlockCount: detectedBlocks.length,
+      skippedBlocks: [],
+    };
+  }
+
+  const parsedMonths: ParseExcelResult[] = [];
+  const skippedBlocks: SkippedExcelMonthBlock[] = [];
+  let inferredYear = targetYear || new Date().getFullYear();
+  let previousMonth: number | null = null;
+
+  for (let index = 0; index < detectedBlocks.length; index += 1) {
+    const block = detectedBlocks[index];
+    const nextBlockOnSheet = detectedBlocks
+      .slice(index + 1)
+      .find((candidate) => candidate.sheetName === block.sheetName);
+
+    const declaredYear = block.explicitYear || block.sheetYear;
+    if (declaredYear) {
+      inferredYear = declaredYear;
+    } else if (previousMonth !== null && block.month < previousMonth) {
+      inferredYear += 1;
+    }
+    previousMonth = block.month;
+
+    const endRowIndex = nextBlockOnSheet?.headingRowIndex ?? block.rows.length;
+    const blockRows = block.rows.slice(block.headingRowIndex, endRowIndex);
+    const blockWorkbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      blockWorkbook,
+      XLSX.utils.aoa_to_sheet(blockRows),
+      block.sheetName.slice(0, 31) || 'Turnos'
+    );
+    const blockOutput = XLSX.write(blockWorkbook, {
+      type: 'array',
+      bookType: 'xlsx',
+    }) as ArrayBuffer | Uint8Array;
+    const blockBuffer =
+      blockOutput instanceof ArrayBuffer
+        ? blockOutput
+        : (blockOutput.buffer.slice(
+            blockOutput.byteOffset,
+            blockOutput.byteOffset + blockOutput.byteLength
+          ) as ArrayBuffer);
+
+    try {
+      const result = await parseExcelBuffer(
+        blockBuffer,
+        inferredYear,
+        block.month,
+        outOfRangePolicy
+      );
+      const sourceSheetName = block.sheetName;
+      parsedMonths.push({
+        ...result,
+        detectedMonth: block.month,
+        detectedYear: inferredYear,
+        detectedMonthName: MONTH_NAMES_ES[block.month - 1],
+        sourceSheetName,
+        hasMonthMismatch: false,
+        workers: result.workers.map((worker) => ({
+          ...worker,
+          importMetadata: {
+            ...worker.importMetadata,
+            sourceFileName: sourceSheetName,
+            sheetName: sourceSheetName,
+          },
+        })),
+      });
+    } catch (error) {
+      skippedBlocks.push({
+        sheetName: block.sheetName,
+        month: block.month,
+        year: inferredYear,
+        reason:
+          error instanceof Error
+            ? error.message
+            : 'No se pudo interpretar este bloque mensual.',
+      });
+    }
+  }
+
+  if (parsedMonths.length === 0) {
+    throw new Error(
+      'Se detectaron varios meses, pero ninguno contiene trabajadores y turnos validos.'
+    );
+  }
+
+  return {
+    months: parsedMonths.sort((left, right) =>
+      `${left.year}-${String(left.month).padStart(2, '0')}`.localeCompare(
+        `${right.year}-${String(right.month).padStart(2, '0')}`
+      )
+    ),
+    detectedBlockCount: detectedBlocks.length,
+    skippedBlocks,
   };
 }
 

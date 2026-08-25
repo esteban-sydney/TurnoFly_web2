@@ -430,8 +430,11 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
     validImports.forEach((item, index) => {
       hydrateShiftDefinitionsFromWorkers(mergedWorkers);
       const syncedWorkers = syncWorkersShiftTimes(item.workers);
-      const selectedImportedWorker =
-        syncedWorkers.find((worker) => worker.id === item.selectedWorkerId) || syncedWorkers[0];
+      const selectedImportedWorker = item.selectedWorkerId
+        ? syncedWorkers.find((worker) => worker.id === item.selectedWorkerId)
+        : index === 0
+          ? syncedWorkers[0]
+          : undefined;
 
       if (index === 0) {
         selectedWorkerId = resolveImportedWorkerId(
@@ -446,7 +449,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         syncedWorkers,
         item.referenceYear,
         item.referenceMonth,
-        index > 0
+        index > 0 && selectedImportedWorker && selectedWorkerId
           ? {
               selectedImportedWorkerId: selectedImportedWorker?.id,
               targetWorkerId: selectedWorkerId,
