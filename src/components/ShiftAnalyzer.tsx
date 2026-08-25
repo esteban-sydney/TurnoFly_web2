@@ -1,15 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   Calendar as CalendarIcon,
-  CalendarRange,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   Share2,
-  Copy,
-  Check,
   Clock,
   Laptop,
   Building,
@@ -21,7 +18,6 @@ import {
   Sun,
   AlertCircle,
   FileText,
-  Users,
   CheckCircle2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -56,11 +52,12 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
 
   const lang = settings.language;
   const calendarRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [shareSuccessNotification, setShareSuccessNotification] = useState<string | null>(null);
+  const [monthDirection, setMonthDirection] = useState<1 | -1>(1);
 
   // Edit Single Day Shift Modal State
   const [editCode, setEditCode] = useState<string>('M');
@@ -154,15 +151,23 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
 
   // Month navigation
   const handlePrevMonth = () => {
-    if (previousPeriod) goToPeriod(previousPeriod.year, previousPeriod.month);
+    if (!previousPeriod) return;
+    setMonthDirection(-1);
+    goToPeriod(previousPeriod.year, previousPeriod.month);
   };
 
   const handleNextMonth = () => {
-    if (nextPeriod) goToPeriod(nextPeriod.year, nextPeriod.month);
+    if (!nextPeriod) return;
+    setMonthDirection(1);
+    goToPeriod(nextPeriod.year, nextPeriod.month);
   };
 
   const handlePeriodChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const [year, month] = event.target.value.split('-').map(Number);
+    const nextIndex = availableShiftPeriods.findIndex(
+      (period) => period.year === year && period.month === month
+    );
+    setMonthDirection(nextIndex < activePeriodIndex ? -1 : 1);
     goToPeriod(year, month);
   };
 
@@ -290,8 +295,6 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
 
     // Fallback: Copy to clipboard and trigger download
     copyTextToClipboard(summaryText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
 
     if (calendarRef.current) {
       try {
@@ -320,37 +323,6 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
     setIsExporting(false);
   };
 
-  // Copy Summary Only
-  const handleCopySummary = () => {
-    if (!activeWorker || !activeWorker.shifts) return;
-
-    let text = `📅 TurnoFly - Horario de Turnos: ${activeWorker.name}\n`;
-    text += `Mes: ${monthNames[activeMonth - 1]} ${activeYear}\n\n`;
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const formattedMonth = activeMonth.toString().padStart(2, '0');
-      const formattedDay = d.toString().padStart(2, '0');
-      const dateStr = `${activeYear}-${formattedMonth}-${formattedDay}`;
-
-      const shift = activeWorker.shifts[dateStr];
-      const code = shift?.rawCode || 'L';
-      const def = categorizeCode(code);
-      const startTime = shift?.startTime || def.defaultStartTime;
-      const endTime = shift?.endTime || def.defaultEndTime;
-      const isWorkDay = shift?.isWorkDay ?? def.isWorkDay;
-      const time = isWorkDay && startTime ? ` (${startTime} - ${endTime})` : '';
-      text += `Día ${d}: [${code}]${time}\n`;
-    }
-
-    copyTextToClipboard(text);
-    setCopied(true);
-    setShareSuccessNotification('¡Texto de turnos copiado al portapapeles!');
-    setTimeout(() => {
-      setCopied(false);
-      setShareSuccessNotification(null);
-    }, 3000);
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-4 sm:py-8 space-y-4 sm:space-y-6 overflow-x-hidden w-full">
       
@@ -369,33 +341,41 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
 
       {/* Animated shift header */}
       <motion.section
-        key={`shift-header-${activeWorker?.id || 'empty'}-${activeYear}-${activeMonth}`}
-        className="relative overflow-hidden p-4 pt-6 sm:p-6 sm:pt-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-indigo-100/60 dark:shadow-none"
-        initial={{ opacity: 0, y: -18, scale: 0.94 }}
-        animate={{ opacity: 1, y: 0, scale: [0.94, 1.015, 1] }}
-        transition={{ duration: 0.65, ease: 'easeOut' }}
+        key={`shift-header-${activeWorker?.id || 'empty'}`}
+        className="relative overflow-hidden rounded-3xl bg-white p-4 pt-5 shadow-lg shadow-indigo-100/60 border border-slate-200/80 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:p-5 sm:pt-6"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: -14, scale: 0.97 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.45, ease: 'easeOut' }}
       >
         <div className="absolute inset-x-0 top-0 grid h-1.5 grid-cols-5" aria-hidden="true">
           {['bg-indigo-600', 'bg-amber-400', 'bg-slate-700', 'bg-emerald-500', 'bg-sky-500'].map((color, index) => (
             <motion.span
               key={color}
               className={color}
-              initial={{ scaleX: 0 }}
+              initial={prefersReducedMotion ? false : { scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ delay: 0.08 + index * 0.07, duration: 0.35, ease: 'easeOut' }}
+              transition={{
+                delay: prefersReducedMotion ? 0 : 0.08 + index * 0.07,
+                duration: prefersReducedMotion ? 0 : 0.35,
+                ease: 'easeOut',
+              }}
             />
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
           <div className="flex items-center gap-3 min-w-0">
             <motion.div
-              className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-200 dark:shadow-indigo-950/40"
-              initial={{ rotate: -30, scale: 0.55 }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-950/40"
+              initial={prefersReducedMotion ? false : { rotate: -24, scale: 0.7 }}
               animate={{ rotate: 0, scale: 1 }}
-              transition={{ delay: 0.18, type: 'spring', stiffness: 280, damping: 15 }}
-              whileHover={{ rotate: 10, scale: 1.08 }}
-              whileTap={{ rotate: -8, scale: 0.92 }}
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0 }
+                  : { delay: 0.12, type: 'spring', stiffness: 300, damping: 17 }
+              }
+              whileHover={prefersReducedMotion ? undefined : { rotate: 8, scale: 1.06 }}
+              whileTap={prefersReducedMotion ? undefined : { rotate: -6, scale: 0.94 }}
             >
               <CalendarIcon className="w-5 h-5" />
             </motion.div>
@@ -403,58 +383,58 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
               <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-0.5">
                 {getTranslation(lang, 'shiftAnalyzerTitle')}
               </p>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white break-words">
+              <h1 className="break-words text-lg font-black text-slate-900 dark:text-white sm:text-xl">
                 {activeWorker?.name || 'Calendario de Turnos'}
               </h1>
             </div>
           </div>
 
-          {/* Controls Cluster */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Compact worker selector without repeating the active name */}
-            {workers.length > 1 && (
-              <motion.label
-                className="relative flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-950/70 transition-colors"
-                whileHover={{ y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.96 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-              >
-                <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span className="text-xs font-semibold">Cambiar trabajador</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <select
-                  value={activeWorker?.id || ''}
-                  onChange={(e) => setActiveWorkerId(e.target.value)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  aria-label="Cambiar trabajador activo"
-                >
-                  {workers.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
-              </motion.label>
-            )}
-
-            {/* Month Selector */}
-            <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/30 p-0.5 rounded-xl border border-amber-200 dark:border-amber-800">
+          <motion.div
+            className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-slate-200 pt-4 dark:border-slate-800"
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: prefersReducedMotion ? 0 : 0.16, duration: 0.3 }}
+          >
+            <div className="flex min-h-11 min-w-0 items-center gap-0.5 rounded-xl border border-amber-200 bg-amber-50 p-0.5 dark:border-amber-800 dark:bg-amber-950/30">
               <motion.button
                 onClick={handlePrevMonth}
                 disabled={!previousPeriod}
-                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-amber-950/70 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                whileHover={previousPeriod ? { x: -3, scale: 1.08 } : undefined}
-                whileTap={previousPeriod ? { x: -6, scale: 0.88 } : undefined}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-amber-800 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent dark:text-amber-300 dark:hover:bg-amber-950/70"
+                whileHover={!prefersReducedMotion && previousPeriod ? { x: -2, scale: 1.06 } : undefined}
+                whileTap={!prefersReducedMotion && previousPeriod ? { x: -4, scale: 0.9 } : undefined}
                 transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                 title="Mes anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
               </motion.button>
-              <label className="relative flex min-h-8 items-center gap-1 px-2 text-xs font-black text-amber-950 dark:text-amber-100 uppercase tracking-wider cursor-pointer">
-                <span>
-                  {monthNames[activeMonth - 1].substring(0, 3)} {activeYear}
-                </span>
-                {availableShiftPeriods.length > 1 && <ChevronDown className="w-3.5 h-3.5" />}
+              <label className="relative flex min-h-9 min-w-0 flex-1 cursor-pointer items-center justify-center overflow-hidden px-1 text-[11px] font-black uppercase tracking-wider text-amber-950 dark:text-amber-100">
+                <AnimatePresence mode="wait" initial={false} custom={monthDirection}>
+                  <motion.span
+                    key={`${activeYear}-${activeMonth}`}
+                    custom={monthDirection}
+                    initial={
+                      prefersReducedMotion
+                        ? { opacity: 1 }
+                        : { opacity: 0, x: monthDirection * 14 }
+                    }
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={
+                      prefersReducedMotion
+                        ? { opacity: 1 }
+                        : { opacity: 0, x: monthDirection * -14 }
+                    }
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: 'easeOut' }}
+                    className="flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap"
+                  >
+                    <span>{monthNames[activeMonth - 1].substring(0, 3)} {activeYear}</span>
+                    {availableShiftPeriods.length > 1 && (
+                      <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[9px] text-indigo-700 shadow-xs dark:bg-slate-900/70 dark:text-indigo-300">
+                        {Math.max(activePeriodIndex + 1, 1)}/{availableShiftPeriods.length}
+                      </span>
+                    )}
+                    {availableShiftPeriods.length > 1 && <ChevronDown className="h-3 w-3 shrink-0" />}
+                  </motion.span>
+                </AnimatePresence>
                 <select
                   value={`${activeYear}-${String(activeMonth).padStart(2, '0')}`}
                   onChange={handlePeriodChange}
@@ -475,48 +455,28 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
               <motion.button
                 onClick={handleNextMonth}
                 disabled={!nextPeriod}
-                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-amber-950/70 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                whileHover={nextPeriod ? { x: 3, scale: 1.08 } : undefined}
-                whileTap={nextPeriod ? { x: 6, scale: 0.88 } : undefined}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-amber-800 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent dark:text-amber-300 dark:hover:bg-amber-950/70"
+                whileHover={!prefersReducedMotion && nextPeriod ? { x: 2, scale: 1.06 } : undefined}
+                whileTap={!prefersReducedMotion && nextPeriod ? { x: 4, scale: 0.9 } : undefined}
                 transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                 title="Mes siguiente"
               >
                 <ChevronRight className="w-4 h-4" />
               </motion.button>
             </div>
-            {availableShiftPeriods.length > 0 && (
-              <span className="inline-flex min-h-8 items-center gap-1.5 px-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                <CalendarRange className="h-3.5 w-3.5 text-indigo-500" />
-                {availableShiftPeriods.length}{' '}
-                {availableShiftPeriods.length === 1 ? 'mes disponible' : 'meses disponibles'}
-              </span>
-            )}
-
-            {/* Copy & Share Action Buttons */}
-            <motion.button
-              onClick={handleCopySummary}
-              className="group p-2 sm:px-3 sm:py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-800"
-              title="Copiar texto del mes"
-              whileHover={{ y: -3, rotate: -1 }}
-              whileTap={{ scale: 0.9, rotate: 3 }}
-              transition={{ type: 'spring', stiffness: 460, damping: 18 }}
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-6" />}
-              <span className="hidden sm:inline">{copied ? '¡Copiado!' : 'Copiar'}</span>
-            </motion.button>
 
             <motion.button
               onClick={onOpenShareModal || handleShareCalendar}
               disabled={isExporting}
-              className="group px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
-              whileHover={{ y: -3, scale: 1.03 }}
-              whileTap={{ scale: 0.9, rotate: -2 }}
+              className="group flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 text-[10px] font-black uppercase tracking-wider text-white shadow-md shadow-indigo-600/20 transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+              whileHover={prefersReducedMotion ? undefined : { y: -2, scale: 1.025 }}
+              whileTap={prefersReducedMotion ? undefined : { scale: 0.92, rotate: -1.5 }}
               transition={{ type: 'spring', stiffness: 460, damping: 18 }}
             >
-              <Share2 className="w-4 h-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-0.5 group-active:scale-75" />
+              <Share2 className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-active:scale-75" />
               <span>{isExporting ? 'Procesando...' : 'Compartir'}</span>
             </motion.button>
-          </div>
+          </motion.div>
         </div>
       </motion.section>
 
@@ -538,7 +498,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                   Sin turnos cargados para este trabajador
                 </p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Selecciona otro trabajador o revisa la planilla de {monthNames[activeMonth - 1]}.
+                  Regresa a Inicio para cambiar trabajador o revisa la planilla de {monthNames[activeMonth - 1]}.
                 </p>
               </div>
             ) : (
