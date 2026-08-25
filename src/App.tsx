@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Splash } from './components/Splash';
 import { AuthScreen } from './components/AuthScreen';
 import { Header } from './components/Header';
+import { AppFooter } from './components/AppFooter';
 import { HomeDashboard } from './components/HomeDashboard';
 import {
   Trash2,
@@ -233,9 +234,10 @@ function AppMain() {
       />
 
       {/* Main View Area */}
-      <main className="flex-1 pb-24 w-full max-w-full overflow-x-hidden">
-        <Suspense fallback={<ViewLoading />}>
-          <AnimatePresence mode="wait" initial={false}>
+      <main className="flex min-h-0 flex-1 flex-col pb-24 w-full max-w-full overflow-x-hidden">
+        <div className="w-full">
+          <Suspense fallback={<ViewLoading />}>
+            <AnimatePresence mode="wait" initial={false}>
             {activeView === 'home' && (
               <motion.div
                 key="home"
@@ -292,8 +294,13 @@ function AppMain() {
                 <SupervisorView />
               </motion.div>
             )}
-          </AnimatePresence>
-        </Suspense>
+            </AnimatePresence>
+          </Suspense>
+        </div>
+
+        <div className="mt-auto pt-8">
+          <AppFooter />
+        </div>
       </main>
 
       {/* Persistent Bottom Navigation Bar for Instant Fluid Navigation */}
