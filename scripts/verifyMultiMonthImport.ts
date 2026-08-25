@@ -129,6 +129,40 @@ assert.equal(
   'El segundo mes debe heredar el horario definido por el primero.'
 );
 
+const octoberWorkers: WorkerProfile[] = [
+  {
+    id: 'row_8_alpha_october',
+    name: 'Persona Alfa',
+    shifts: {
+      '2026-10-01': shift('2026-10-01', 'N', 'night', '00:00', '08:00'),
+      '2026-10-02': shift('2026-10-02', 'M', 'morning', '08:00', '16:00'),
+    },
+  },
+];
+const stagedThreeMonths = mergeImportedWorkersForPeriod(
+  stagedAugustAndSeptember,
+  octoberWorkers,
+  2026,
+  10,
+  {
+    selectedImportedWorkerId: 'row_8_alpha_october',
+    targetWorkerId: 'worker_alpha_stable',
+  }
+);
+const stagedThreeMonthsAlpha = stagedThreeMonths.find(
+  (worker) => worker.id === 'worker_alpha_stable'
+);
+
+assert.ok(stagedThreeMonthsAlpha, 'El tercer mes debe vincularse con el trabajador existente.');
+assert.equal(stagedThreeMonthsAlpha.shifts['2026-08-11'].rawCode, 'M');
+assert.equal(stagedThreeMonthsAlpha.shifts['2026-09-02'].rawCode, 'T');
+assert.equal(stagedThreeMonthsAlpha.shifts['2026-10-01'].rawCode, 'N');
+assert.equal(
+  stagedThreeMonthsAlpha.shifts['2026-10-02'].startTime,
+  '07:30',
+  'Agregar un tercer mes debe conservar y reutilizar los horarios base.'
+);
+
 const septemberSelectedWithDifferentName: WorkerProfile[] = [
   {
     id: 'selected_worker_september',

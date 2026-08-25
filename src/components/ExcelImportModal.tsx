@@ -45,17 +45,53 @@ interface SavedMonthImport extends ImportedWorkerMonth {
   totalShiftsCount: number;
 }
 
+const getNextAvailableReference = (
+  year: number,
+  month: number,
+  importedKeys: Set<string>
+) => {
+  let candidateYear = year;
+  let candidateMonth = month;
+
+  for (let offset = 0; offset < 120; offset += 1) {
+    const key = `${candidateYear}-${String(candidateMonth).padStart(2, '0')}`;
+    if (!importedKeys.has(key)) {
+      return { year: candidateYear, month: candidateMonth };
+    }
+
+    if (candidateMonth === 12) {
+      candidateMonth = 1;
+      candidateYear += 1;
+    } else {
+      candidateMonth += 1;
+    }
+  }
+
+  return { year, month };
+};
+
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   isOpen,
   onClose,
   onFinished,
 }) => {
-  const { settings, loadImportedWorkerMonths, activeYear, activeMonth } = useApp();
+  const {
+    settings,
+    loadImportedWorkerMonths,
+    activeYear,
+    activeMonth,
+    shiftImports,
+  } = useApp();
   const lang = settings.language;
 
   const now = new Date();
-  const [refMonth, setRefMonth] = useState<number>(activeMonth || now.getMonth() + 1);
-  const [refYear, setRefYear] = useState<number>(activeYear || now.getFullYear());
+  const initialReference = getNextAvailableReference(
+    activeYear || now.getFullYear(),
+    activeMonth || now.getMonth() + 1,
+    new Set(shiftImports.map((item) => item.key))
+  );
+  const [refMonth, setRefMonth] = useState<number>(initialReference.month);
+  const [refYear, setRefYear] = useState<number>(initialReference.year);
   const [outOfRangePolicy, setOutOfRangePolicy] = useState<OutOfRangePolicy>('remap_last_day');
 
   const [rawFileBuffer, setRawFileBuffer] = useState<ArrayBuffer | null>(null);
@@ -65,6 +101,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [parsedData, setParsedData] = useState<ParseExcelResult | null>(null);
   const [savedMonths, setSavedMonths] = useState<SavedMonthImport[]>([]);
+  const [pendingReplacement, setPendingReplacement] = useState<SavedMonthImport | null>(null);
 
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>('');
 
@@ -176,13 +213,39 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     setErrorMessage(null);
   };
 
-  const moveReferenceToNextMonth = () => {
-    if (refMonth === 12) {
-      setRefMonth(1);
-      setRefYear((year) => year + 1);
-    } else {
-      setRefMonth((month) => month + 1);
-    }
+  const moveReferenceToNextMonth = (newlySavedKey?: string) => {
+    const nextMonth = refMonth === 12 ? 1 : refMonth + 1;
+    const nextYear = refMonth === 12 ? refYear + 1 : refYear;
+    const occupiedKeys = new Set([
+      ...shiftImports.map((item) => item.key),
+      ...savedMonths.map((item) => item.key),
+      ...(newlySavedKey ? [newlySavedKey] : []),
+    ]);
+    const nextReference = getNextAvailableReference(nextYear, nextMonth, occupiedKeys);
+
+    setRefMonth(nextReference.month);
+    setRefYear(nextReference.year);
+  };
+
+  const commitSavedMonth = (savedMonth: SavedMonthImport, isUpdate: boolean) => {
+    setSavedMonths((current) => {
+      const existingIndex = current.findIndex((item) => item.key === savedMonth.key);
+      if (existingIndex === -1) {
+        return [...current, savedMonth].sort((left, right) => left.key.localeCompare(right.key));
+      }
+
+      return current
+        .map((item, index) => (index === existingIndex ? savedMonth : item))
+        .sort((left, right) => left.key.localeCompare(right.key));
+    });
+    setSuccessMessage(
+      `${MONTH_NAMES_ES[savedMonth.referenceMonth - 1]} ${savedMonth.referenceYear} ${
+        isUpdate ? 'preparado para actualizar' : 'guardado'
+      }. Ya puedes cargar otro mes.`
+    );
+    setPendingReplacement(null);
+    resetCurrentFile();
+    moveReferenceToNextMonth(savedMonth.key);
   };
 
   const handleSaveMonth = () => {
@@ -215,25 +278,15 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       sourceFileName,
       totalShiftsCount: parsedData.totalShiftsCount,
     };
-    const alreadySaved = savedMonths.some((item) => item.key === key);
+    const alreadyStaged = savedMonths.some((item) => item.key === key);
+    const alreadyImported = shiftImports.some((item) => item.key === key);
 
-    setSavedMonths((current) => {
-      const existingIndex = current.findIndex((item) => item.key === key);
-      if (existingIndex === -1) {
-        return [...current, savedMonth].sort((left, right) => left.key.localeCompare(right.key));
-      }
+    if (alreadyImported && !alreadyStaged) {
+      setPendingReplacement(savedMonth);
+      return;
+    }
 
-      return current
-        .map((item, index) => (index === existingIndex ? savedMonth : item))
-        .sort((left, right) => left.key.localeCompare(right.key));
-    });
-    setSuccessMessage(
-      `${MONTH_NAMES_ES[refMonth - 1]} ${refYear} ${
-        alreadySaved ? 'actualizado' : 'guardado'
-      }. Ya puedes cargar otro mes.`
-    );
-    resetCurrentFile();
-    moveReferenceToNextMonth();
+    commitSavedMonth(savedMonth, alreadyStaged || alreadyImported);
   };
 
   const handleDeleteSavedMonth = (key: string) => {
@@ -353,6 +406,20 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </select>
             </div>
           </div>
+
+          {shiftImports.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5 font-black text-indigo-700 dark:text-indigo-300">
+                <Layers3 className="h-3.5 w-3.5" aria-hidden="true" />
+                {shiftImports.length} {shiftImports.length === 1 ? 'mes cargado' : 'meses cargados'}
+              </span>
+              <span className="truncate">
+                {shiftImports
+                  .map((item) => `${MONTH_NAMES_ES[item.month - 1]} ${item.year}`)
+                  .join(' · ')}
+              </span>
+            </div>
+          )}
 
           {savedMonths.length > 0 && (
             <section className="overflow-hidden rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30">
@@ -634,6 +701,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   {savedMonths.some(
                     (item) =>
                       item.referenceMonth === refMonth && item.referenceYear === refYear
+                  ) || shiftImports.some(
+                    (item) => item.month === refMonth && item.year === refYear
                   )
                     ? 'Actualizar'
                     : 'Guardar'}{' '}
@@ -655,6 +724,53 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           </div>
         </div>
       </div>
+
+      {pendingReplacement && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="replace-shift-month-title"
+            className="w-full max-w-sm rounded-3xl border border-amber-200 bg-white p-5 shadow-2xl dark:border-amber-800 dark:bg-slate-900"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <h3
+                  id="replace-shift-month-title"
+                  className="text-base font-black text-slate-950 dark:text-white"
+                >
+                  Mes ya cargado
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                  {MONTH_NAMES_ES[pendingReplacement.referenceMonth - 1]}{' '}
+                  {pendingReplacement.referenceYear} ya tiene turnos. Al continuar se actualizará
+                  únicamente ese mes; los demás meses y tus citas personales se conservarán.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingReplacement(null)}
+                className="min-h-11 rounded-xl px-3 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => commitSavedMonth(pendingReplacement, true)}
+                className="min-h-11 rounded-xl bg-amber-600 px-3 text-xs font-black text-white shadow-md transition-all hover:bg-amber-500 active:scale-[0.98]"
+              >
+                Actualizar mes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

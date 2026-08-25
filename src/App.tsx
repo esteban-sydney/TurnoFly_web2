@@ -15,6 +15,7 @@ import {
   Users,
   LoaderCircle,
   UserRoundCheck,
+  FilePlus2,
 } from 'lucide-react';
 import { getTranslation } from './utils/i18n';
 import { buttonMotion } from './utils/motionVariants';
@@ -186,6 +187,12 @@ function AppMain() {
   const openClearShiftsDialog = () => {
     setPendingShiftDeletion(null);
     setConfirmClearOpen(true);
+  };
+
+  const openImportFromShiftManager = () => {
+    setPendingShiftDeletion(null);
+    setConfirmClearOpen(false);
+    setIsImportOpen(true);
   };
 
   const handleConfirmShiftDeletion = () => {
@@ -473,21 +480,32 @@ function AppMain() {
         </div>
       )}
 
-      {/* Clear Shifts Confirmation Dialog */}
+      {/* Loaded Shifts Management Dialog */}
       {confirmClearOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-md max-h-[88vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-xs">
             <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
-              <div className="p-2.5 rounded-2xl bg-amber-100 dark:bg-amber-950">
-                <Trash2 className="w-6 h-6" />
+              <div className="p-2.5 rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
+                <FilePlus2 className="w-6 h-6" />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {getTranslation(lang, 'clearShiftsBtn')}
               </h3>
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Selecciona el Excel o mes que deseas eliminar. Tus otros turnos y citas personales se mantendrán sin cambios.
+              Agrega otro Excel con su mes de referencia o elimina una carga anterior. Tus citas personales se mantendrán sin cambios.
             </p>
+
+            {!pendingShiftDeletion && (
+              <button
+                type="button"
+                onClick={openImportFromShiftManager}
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-500 active:scale-[0.98]"
+              >
+                <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+                Agregar otro mes
+              </button>
+            )}
 
             {shiftImports.length > 0 ? (
               <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-700">
@@ -521,7 +539,7 @@ function AppMain() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-slate-500 dark:text-slate-400">
-                No hay turnos cargados para eliminar.
+                No hay turnos cargados.
               </div>
             )}
 

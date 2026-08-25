@@ -498,24 +498,35 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-3">
-              <Trash2 className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
+              <FileSpreadsheet className="w-5 h-5" />
             </div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Limpieza de Datos</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Gestión de turnos</p>
             <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">
               {getTranslation(lang, 'clearShiftsBtn')}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
-              Elimina únicamente los turnos importados conservando tus citas personales.
+              Agrega un nuevo Excel por mes o elimina uno ya cargado. Tus citas personales se conservan.
             </p>
           </div>
-          <button
-            onClick={onConfirmClearShifts}
-            id="worker-clear-shifts-btn"
-            className="w-full py-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-600 hover:text-white text-amber-700 dark:text-amber-300 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer border border-amber-200 dark:border-amber-800"
-          >
-            <span>{getTranslation(lang, 'clearShiftsBtn')}</span>
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              onClick={onOpenImport}
+              id="worker-add-shifts-btn"
+              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            >
+              <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+              <span>Agregar turnos</span>
+            </button>
+            <button
+              onClick={onConfirmClearShifts}
+              id="worker-manage-shifts-btn"
+              className="w-full py-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/60 text-slate-700 dark:text-slate-200 hover:text-amber-700 dark:hover:text-amber-300 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-amber-200 dark:hover:border-amber-800"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              <span>Ver cargados</span>
+            </button>
+          </div>
         </div>
 
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
