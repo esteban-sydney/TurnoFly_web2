@@ -25,6 +25,7 @@ import {
   CalendarExportEvent,
   getSuggestedEventEndTime,
 } from '../utils/calendarExport';
+import { getPersonalEventStatus } from '../utils/personalEventStatus';
 
 interface PersonalCalendarProps {
   focusedEventId?: string | null;
@@ -67,6 +68,14 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
   const [notes, setNotes] = useState('');
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [calendarEventToExport, setCalendarEventToExport] = useState<CalendarExportEvent | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const [eventPendingDeletion, setEventPendingDeletion] = useState<PersonalEvent | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const handleOpenAdd = (defaultDateStr?: string) => {
     if (!activeWorker) return;
     setEditingEvent(null);
@@ -82,6 +91,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
     setEndTime('17:00');
     setReminderMinutes(30);
     setNotes('');
+    setEventPendingDeletion(null);
     setIsModalOpen(true);
   };
 
@@ -94,6 +104,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
     setEndTime(evt.endTime);
     setReminderMinutes(evt.reminderMinutes);
     setNotes(evt.notes || '');
+    setEventPendingDeletion(null);
     setIsModalOpen(true);
   };
 
@@ -120,6 +131,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
   useEffect(() => {
     if (!editingEvent || editingEvent.workerId === activeWorker?.id) return;
     setEditingEvent(null);
+    setEventPendingDeletion(null);
     setIsModalOpen(false);
   }, [activeWorker?.id, editingEvent]);
 
@@ -287,6 +299,10 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
     }
   };
 
+  const editingEventStatus = editingEvent
+    ? getPersonalEventStatus(editingEvent, currentTime)
+    : null;
+
   return (
     <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-4 sm:py-8 space-y-4 sm:space-y-6 overflow-x-hidden w-full">
       {saveToast && (
@@ -420,8 +436,16 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                   const dateStr = `${activeYear}-${formattedMonth}-${formattedDay}`;
 
                   const dayEvents = events.filter((e) => e.date === dateStr);
+                  const dayEventStatuses = dayEvents.map((event) =>
+                    getPersonalEventStatus(event, currentTime)
+                  );
+                  const hasOngoingEvent = dayEventStatuses.includes('ongoing');
+                  const hasUpcomingEvent = dayEventStatuses.includes('upcoming');
+                  const hasOnlyCompletedEvents =
+                    dayEvents.length > 0 &&
+                    dayEventStatuses.every((status) => status === 'completed');
 
-                  const today = new Date();
+                  const today = new Date(currentTime);
                   const isToday = activeYear === today.getFullYear() && activeMonth === (today.getMonth() + 1) && dayNum === today.getDate();
 
                   return (
@@ -431,8 +455,12 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                       className={`h-16 sm:h-20 p-1 rounded-xl border flex flex-col justify-between items-stretch transition-all cursor-pointer active:scale-95 shadow-2xs relative ${
                         isToday
                           ? 'ring-4 ring-amber-400 dark:ring-amber-400 border-amber-400 bg-amber-50 dark:bg-amber-950/50 shadow-md z-10 scale-[1.03]'
-                          : dayEvents.length > 0
+                          : hasOngoingEvent
+                          ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800'
+                          : hasUpcomingEvent
                           ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800'
+                          : hasOnlyCompletedEvents
+                          ? 'bg-slate-100/80 dark:bg-slate-800/70 border-slate-300 dark:border-slate-700'
                           : 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-200/70 dark:border-slate-700/50 hover:border-indigo-400'
                       }`}
                     >
@@ -450,19 +478,35 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
 
                       {/* Center: Events List / Indicator */}
                       <div className="space-y-0.5 my-auto overflow-hidden">
-                        {dayEvents.slice(0, 2).map((evt) => (
-                          <div
-                            key={evt.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEdit(evt);
-                            }}
-                            className="p-0.5 rounded bg-white dark:bg-slate-800 text-[9px] font-extrabold text-indigo-900 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 truncate flex items-center gap-0.5"
-                          >
-                            {getTypeIcon(evt.type)}
-                            <span className="truncate">{evt.title}</span>
-                          </div>
-                        ))}
+                        {dayEvents.slice(0, 2).map((evt) => {
+                          const status = getPersonalEventStatus(evt, currentTime);
+
+                          return (
+                            <div
+                              key={evt.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEdit(evt);
+                              }}
+                              className={`p-0.5 rounded text-[9px] font-extrabold border truncate flex items-center gap-0.5 ${
+                                status === 'completed'
+                                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 opacity-80'
+                                  : status === 'ongoing'
+                                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800'
+                                  : 'bg-white dark:bg-slate-800 text-indigo-900 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800'
+                              }`}
+                            >
+                              {status === 'completed' ? (
+                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                              ) : (
+                                getTypeIcon(evt.type)
+                              )}
+                              <span className={`truncate ${status === 'completed' ? 'line-through' : ''}`}>
+                                {evt.title}
+                              </span>
+                            </div>
+                          );
+                        })}
                         {dayEvents.length > 2 && (
                           <span className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 block text-center">
                             +{dayEvents.length - 2} más
@@ -472,7 +516,13 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
 
                       {/* Bottom Label */}
                       <span className="text-[8px] text-slate-400 text-center uppercase tracking-tighter">
-                        {dayEvents.length > 0 ? `${dayEvents.length} cita(s)` : '+ cita'}
+                        {hasOnlyCompletedEvents
+                          ? dayEvents.length === 1
+                            ? 'Finalizada'
+                            : 'Finalizadas'
+                          : dayEvents.length > 0
+                          ? `${dayEvents.length} cita(s)`
+                          : '+ cita'}
                       </span>
                     </div>
                   );
@@ -506,6 +556,25 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                   <span className="truncate font-semibold">
                     Cita para <strong>{activeWorker.name}</strong>
                   </span>
+                </div>
+              )}
+              {editingEventStatus === 'completed' && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-100 px-3 py-3 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+                    <div>
+                      <p className="font-black">Cita finalizada</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                        Puedes conservarla como historial o eliminarla de TurnoFly.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {editingEventStatus === 'ongoing' && (
+                <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 font-black text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                  <CalendarIcon className="h-4 w-4 shrink-0" />
+                  Esta cita está en curso.
                 </div>
               )}
               <div>
@@ -610,14 +679,11 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                 {editingEvent ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      deletePersonalEvent(editingEvent.id);
-                      setIsModalOpen(false);
-                    }}
-                    className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 hover:bg-rose-100 font-bold flex items-center gap-1 cursor-pointer"
+                    onClick={() => setEventPendingDeletion(editingEvent)}
+                    className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 hover:bg-rose-100 font-bold flex items-center gap-1 cursor-pointer border border-rose-200 dark:border-rose-900"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span>Eliminar</span>
+                    <span>Eliminar cita</span>
                   </button>
                 ) : <div />}
 
@@ -638,6 +704,52 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {eventPendingDeletion && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-event-title"
+            className="w-full max-w-sm rounded-3xl border border-rose-200 bg-white p-5 shadow-2xl dark:border-rose-900 dark:bg-slate-900"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-300">
+                <Trash2 className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <h3 id="delete-event-title" className="text-base font-black text-slate-950 dark:text-white">
+                  Eliminar cita
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                  ¿Deseas eliminar “{eventPendingDeletion.title}” de TurnoFly? Esta acción no la
+                  eliminará de Google Calendar ni del calendario del teléfono.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEventPendingDeletion(null)}
+                className="min-h-11 rounded-xl px-3 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Conservar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deletePersonalEvent(eventPendingDeletion.id);
+                  setEventPendingDeletion(null);
+                  setIsModalOpen(false);
+                }}
+                className="min-h-11 rounded-xl bg-rose-600 px-3 text-xs font-black text-white shadow-md hover:bg-rose-500 active:scale-[0.98]"
+              >
+                Eliminar definitivamente
+              </button>
+            </div>
           </div>
         </div>
       )}

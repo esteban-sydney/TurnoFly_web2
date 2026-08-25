@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   FileSpreadsheet,
@@ -16,6 +16,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { buttonMotion, cardMotion, fadeInUp } from '../utils/motionVariants';
+import { getPersonalEventStatus } from '../utils/personalEventStatus';
 
 interface HomeDashboardProps {
   onOpenImport: () => void;
@@ -45,6 +46,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   const lang = settings.language;
   const isSupervisor = settings.userRole === 'supervisor';
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const formattedEventDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-');
@@ -55,11 +62,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     const monthPrefix = `${activeYear}-${activeMonth.toString().padStart(2, '0')}-`;
 
     return events
-      .filter((event) => event.date.startsWith(monthPrefix))
+      .filter(
+        (event) =>
+          event.date.startsWith(monthPrefix) &&
+          getPersonalEventStatus(event, currentTime) !== 'completed'
+      )
       .sort((eventA, eventB) =>
         `${eventA.date}T${eventA.startTime}`.localeCompare(`${eventB.date}T${eventB.startTime}`)
       );
-  }, [events, activeYear, activeMonth]);
+  }, [events, activeYear, activeMonth, currentTime]);
 
   const conflictByEventId = useMemo(
     () => new Map(conflicts.map((conflict) => [conflict.eventId, conflict])),
@@ -403,7 +414,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 Recordatorios de citas
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Citas que no se superponen con tus turnos.
+                Próximas citas que no se superponen con tus turnos.
               </p>
             </div>
           </div>
@@ -411,8 +422,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         {regularEvents.length > 0 ? (
           <div className="space-y-3">
-            {regularEvents.map((event) => (
-              <button
+            {regularEvents.map((event) => {
+              const status = getPersonalEventStatus(event, currentTime);
+
+              return (
+                <button
                 type="button"
                 key={event.id}
                 onClick={() => onOpenPersonalEvent(event.id)}
@@ -421,6 +435,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <div className="min-w-0">
+                    <span className="mb-1 inline-flex rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                      {status === 'ongoing' ? 'En curso' : 'Próxima'}
+                    </span>
                     <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                       {event.title} {formattedEventDate(event.date)} a las {event.startTime}
                     </p>
@@ -429,12 +446,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     </p>
                   </div>
                 </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         ) : (
           <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center">
-            No hay citas sin conflicto en este mes.
+            No hay próximas citas sin conflicto en este mes.
           </div>
         )}
       </div>
@@ -451,7 +469,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 Citas con conflicto
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Citas que se superponen con un turno.
+                Próximas citas que se superponen con un turno.
               </p>
             </div>
           </div>
@@ -461,6 +479,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div className="space-y-3">
             {conflictedEvents.map((event) => {
               const conflict = conflictByEventId.get(event.id)!;
+              const status = getPersonalEventStatus(event, currentTime);
 
               return (
                 <button
@@ -472,6 +491,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
                     <div className="min-w-0">
+                      <span className="mb-1 inline-flex rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
+                        {status === 'ongoing' ? 'En curso' : 'Próxima'}
+                      </span>
                       <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                         {event.title} {formattedEventDate(event.date)} a las {event.startTime}
                       </p>
@@ -486,7 +508,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         ) : (
           <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center">
-            No hay citas con conflicto en este mes.
+            No hay próximas citas con conflicto en este mes.
           </div>
         )}
       </div>

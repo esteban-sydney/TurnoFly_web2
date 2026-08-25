@@ -16,6 +16,7 @@
     "test:shift-editing": "tsx ./scripts/verifyShiftEditing.ts",
     "test:shift-periods": "tsx ./scripts/verifyShiftPeriodDeletion.ts",
     "test:calendar": "tsx ./scripts/verifyCalendarExport.ts",
+    "test:event-status": "tsx ./scripts/verifyPersonalEventStatus.ts",
     "test:backup": "tsx ./scripts/verifyBackupValidation.ts",
     "test:event-ownership": "tsx ./scripts/verifyPersonalEventOwnership.ts"
   },
