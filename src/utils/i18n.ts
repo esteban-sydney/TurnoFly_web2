@@ -33,7 +33,7 @@ export const translations = {
     offDays: 'Días Libres',
     myShiftsBtn: 'Mis Turnos',
     evidenceBtn: 'Cargar Evidencia (Foto/PDF)',
-    clearShiftsBtn: 'Gestionar Turnos Cargados',
+    clearShiftsBtn: 'Gestionar Meses Cargados',
     
     // Supervisor Summary
     supervisorTitle: 'Panel General de Jefatura',
@@ -148,7 +148,7 @@ export const translations = {
     offDays: 'Days Off',
     myShiftsBtn: 'My Shifts',
     evidenceBtn: 'Upload Evidence (Photo/PDF)',
-    clearShiftsBtn: 'Manage Loaded Shifts',
+    clearShiftsBtn: 'Manage Loaded Months',
     
     supervisorTitle: 'Supervisor Dashboard',
     workersDetected: 'Workers Detected',
@@ -254,7 +254,7 @@ export const translations = {
     offDays: 'Dias Folga',
     myShiftsBtn: 'Meus Turnos',
     evidenceBtn: 'Carregar Evidência (Foto/PDF)',
-    clearShiftsBtn: 'Gerenciar Turnos Carregados',
+    clearShiftsBtn: 'Gerenciar Meses Carregados',
     
     supervisorTitle: 'Painel Geral da Gerência',
     workersDetected: 'Trabalhadores Detectados',

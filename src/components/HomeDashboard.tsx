@@ -10,7 +10,6 @@ import {
   ChevronDown,
   Clock,
   RotateCcw,
-  Trash2,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -509,24 +508,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               Agrega un nuevo Excel por mes o elimina uno ya cargado. Tus citas personales se conservan.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button
-              onClick={onOpenImport}
-              id="worker-add-shifts-btn"
-              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
-            >
-              <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
-              <span>Agregar turnos</span>
-            </button>
-            <button
-              onClick={onConfirmClearShifts}
-              id="worker-manage-shifts-btn"
-              className="w-full py-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/60 text-slate-700 dark:text-slate-200 hover:text-amber-700 dark:hover:text-amber-300 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-amber-200 dark:hover:border-amber-800"
-            >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-              <span>Ver cargados</span>
-            </button>
-          </div>
+          <button
+            onClick={onConfirmClearShifts}
+            id="worker-manage-shifts-btn"
+            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+          >
+            <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+            <span>Gestionar meses cargados</span>
+          </button>
         </div>
 
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
