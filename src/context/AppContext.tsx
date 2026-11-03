@@ -20,6 +20,7 @@ import { detectScheduleConflicts } from '../utils/conflictDetector';
 import {
   COMMON_SHIFT_DEFINITIONS,
   categorizeCode,
+  inferNumericShiftDefinitionsFromWorkers,
   isRealPersonName,
   syncWorkersShiftTimes,
 } from '../utils/excelParser';
@@ -152,11 +153,17 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
     };
   }, [storage]);
   const [settings, setSettings] = useState<AppSettings>(() => initialData.settings);
-  const shiftDefinitions = useMemo(
-    () => ({ ...COMMON_SHIFT_DEFINITIONS, ...(settings.shiftDefinitions || {}) }),
-    [settings.shiftDefinitions]
-  );
   const [workers, setWorkers] = useState<WorkerProfile[]>(() => initialData.workers);
+  const shiftDefinitions = useMemo(() => {
+    const knownDefinitions = {
+      ...COMMON_SHIFT_DEFINITIONS,
+      ...(settings.shiftDefinitions || {}),
+    };
+    return {
+      ...knownDefinitions,
+      ...inferNumericShiftDefinitionsFromWorkers(workers, knownDefinitions),
+    };
+  }, [settings.shiftDefinitions, workers]);
   const [events, setEvents] = useState<PersonalEvent[]>(() => initialData.events);
   const [evidence, setEvidence] = useState<HorarioEvidence[]>(() => initialData.evidence);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);

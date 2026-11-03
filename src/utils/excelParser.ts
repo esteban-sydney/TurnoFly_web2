@@ -150,6 +150,44 @@ export function categorizeCode(
   return { code: clean, name: `Turno ${clean}`, category: 'other', defaultStartTime: '08:00', defaultEndTime: '16:00', isWorkDay: true, color: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-200 dark:border-indigo-700' };
 }
 
+/** Infers missing numeric-code definitions from imported shifts without mutating shared defaults. */
+export function inferNumericShiftDefinitionsFromWorkers(
+  workersList: WorkerProfile[],
+  knownDefinitions: Record<string, ShiftCodeDefinition>
+): Record<string, ShiftCodeDefinition> {
+  const inferred: Record<string, { definition: ShiftCodeDefinition; sourceWasManual: boolean }> = {};
+
+  workersList.forEach((worker) => {
+    Object.values(worker.shifts || {}).forEach((shift) => {
+      const code = shift.rawCode?.trim().toUpperCase();
+      if (!code || !/\d/.test(code) || knownDefinitions[code]) return;
+
+      const fallback = categorizeCode(code, knownDefinitions);
+      const candidate: ShiftCodeDefinition = {
+        ...fallback,
+        code,
+        category: shift.category,
+        defaultStartTime: shift.isWorkDay
+          ? shift.startTime ?? fallback.defaultStartTime
+          : '',
+        defaultEndTime: shift.isWorkDay
+          ? shift.endTime ?? fallback.defaultEndTime
+          : '',
+        isWorkDay: shift.isWorkDay,
+        color: shiftCategoryColor(shift.category),
+      };
+      const current = inferred[code];
+      if (!current || (current.sourceWasManual && !shift.editedManually)) {
+        inferred[code] = { definition: candidate, sourceWasManual: Boolean(shift.editedManually) };
+      }
+    });
+  });
+
+  return Object.fromEntries(
+    Object.entries(inferred).map(([code, entry]) => [code, entry.definition])
+  );
+}
+
 /** Compatibility helper for legacy consumers that hydrate shared defaults from saved shifts. */
 export function hydrateShiftDefinitionsFromWorkers(workersList: WorkerProfile[]): void {
   const hydratedCodes = new Set<string>();
