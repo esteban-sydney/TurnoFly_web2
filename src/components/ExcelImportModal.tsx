@@ -16,6 +16,7 @@ import {
   Flag,
   Trash2,
   Layers3,
+  Clock3,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
@@ -26,12 +27,15 @@ import {
 } from '../utils/workerImportMerge';
 import {
   parseExcelWorkbookBuffer,
+  categorizeCode,
+  shiftCategoryColor,
   generateSampleExcelBuffer,
   ParseExcelResult,
   SkippedExcelMonthBlock,
   MONTH_NAMES_ES,
   OutOfRangePolicy,
 } from '../utils/excelParser';
+import type { ShiftCategory, ShiftCodeDefinition } from '../types';
 
 interface ExcelImportModalProps {
   isOpen: boolean;
@@ -82,6 +86,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     activeYear,
     activeMonth,
     shiftImports,
+    shiftDefinitions,
+    saveShiftDefinition,
   } = useApp();
   const lang = settings.language;
 
@@ -108,6 +114,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [pendingReplacement, setPendingReplacement] = useState<SavedMonthImport[] | null>(null);
 
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>('');
+  const [draftShiftDefinitions, setDraftShiftDefinitions] = useState<Record<string, ShiftCodeDefinition>>({});
+  const [newShiftCodesConfirmed, setNewShiftCodesConfirmed] = useState(true);
 
   if (!isOpen) return null;
 
@@ -120,12 +128,32 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const workbookResult = await parseExcelWorkbookBuffer(buffer, yearVal, monthVal, policy);
+      const workbookResult = await parseExcelWorkbookBuffer(buffer, yearVal, monthVal, policy, shiftDefinitions);
       const primaryResult = workbookResult.months[0];
       setParsedMonths(workbookResult.months);
       setDetectedBlockCount(workbookResult.detectedBlockCount);
       setSkippedBlocks(workbookResult.skippedBlocks);
       setParsedData(primaryResult);
+      const usedCodes = Array.from(new Set(workbookResult.months.flatMap((month) =>
+        month.workers.flatMap((worker) => Object.values(worker.shifts).map((shift) => shift.rawCode.trim().toUpperCase()))
+      ))).filter(Boolean);
+      const codesToReview = usedCodes.filter((code) => {
+        const fromWorkbook = workbookResult.detectedShiftDefinitions[code];
+        const current = shiftDefinitions[code];
+        if (!current) return true;
+        if (!fromWorkbook) return false;
+        return (
+          current.category !== fromWorkbook.category ||
+          current.defaultStartTime !== fromWorkbook.defaultStartTime ||
+          current.defaultEndTime !== fromWorkbook.defaultEndTime ||
+          current.isWorkDay !== fromWorkbook.isWorkDay
+        );
+      });
+      setDraftShiftDefinitions(Object.fromEntries(codesToReview.map((code) => [
+        code,
+        workbookResult.detectedShiftDefinitions[code] || categorizeCode(code, shiftDefinitions),
+      ])));
+      setNewShiftCodesConfirmed(codesToReview.length === 0);
       if (primaryResult.workers.length > 0) {
         const preferredWorkerName = savedMonths[0]?.selectedWorkerName;
         const preferredWorker = preferredWorkerName
@@ -221,6 +249,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     setRawFileBuffer(null);
     setCurrentFileName('');
     setSelectedWorkerId('');
+    setDraftShiftDefinitions({});
+    setNewShiftCodesConfirmed(true);
     setErrorMessage(null);
   };
 
@@ -260,12 +290,41 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
   const handleSaveMonth = () => {
     if (!parsedData || parsedData.workers.length === 0) return;
+    if (Object.keys(draftShiftDefinitions).length > 0 && !newShiftCodesConfirmed) {
+      setErrorMessage('Revisa y confirma las definiciones de turnos antes de guardar.');
+      return;
+    }
+
+    Object.values(draftShiftDefinitions).forEach((definition) => saveShiftDefinition(definition, false));
 
     const sourceFileName = currentFileName || parsedData.sourceSheetName;
     const primarySelectedWorker =
       parsedData.workers.find((worker) => worker.id === selectedWorkerId) || parsedData.workers[0];
     const selectedIdentity = getWorkerIdentityKey(primarySelectedWorker.name);
-    const monthsToSave = parsedMonths.length > 0 ? parsedMonths : [parsedData];
+    const monthsToSave = (parsedMonths.length > 0 ? parsedMonths : [parsedData]).map((month) => ({
+      ...month,
+      workers: month.workers.map((worker) => {
+        const shifts = Object.fromEntries(Object.entries(worker.shifts).map(([date, shift]) => {
+          const definition = draftShiftDefinitions[shift.rawCode.toUpperCase()] || shiftDefinitions[shift.rawCode.toUpperCase()];
+          if (!definition) return [date, shift];
+          return [date, {
+            ...shift,
+            category: definition.category,
+            startTime: definition.isWorkDay ? definition.defaultStartTime : '',
+            endTime: definition.isWorkDay ? definition.defaultEndTime : '',
+            isWorkDay: definition.isWorkDay,
+          }];
+        }));
+        return {
+          ...worker,
+          shifts,
+          shiftEntries: worker.shiftEntries?.map((entry) => {
+            const definition = draftShiftDefinitions[entry.code.toUpperCase()] || shiftDefinitions[entry.code.toUpperCase()];
+            return definition ? { ...entry, category: definition.category } : entry;
+          }),
+        };
+      }),
+    }));
     const multiMonthWorkbook = monthsToSave.length > 1;
     const imports = monthsToSave.map((monthResult) => {
       const referenceMonth = multiMonthWorkbook ? monthResult.month : refMonth;
@@ -397,6 +456,14 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const replacementPeriods = (pendingReplacement || []).filter((item) =>
     shiftImports.some((record) => record.key === item.key)
   );
+  const definitionReviewEntries = Object.entries(draftShiftDefinitions);
+  const updateDraftDefinition = (code: string, update: Partial<ShiftCodeDefinition>) => {
+    setNewShiftCodesConfirmed(false);
+    setDraftShiftDefinitions((current) => ({
+      ...current,
+      [code]: { ...current[code], ...update },
+    }));
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
@@ -617,6 +684,58 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </div>
               </div>
 
+              {definitionReviewEntries.length > 0 && (
+                <section className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50/70 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+                  <div className="flex items-start gap-2.5">
+                    <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />
+                    <div>
+                      <h3 className="text-sm font-black text-amber-950 dark:text-amber-100">Revisa los horarios de estos códigos</h3>
+                      <p className="mt-1 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">La leyenda del Excel define códigos nuevos o cambia horarios del catálogo. Revisa la propuesta antes de guardar esta planilla.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {definitionReviewEntries.map(([code, definition]) => {
+                      const occurrences = parsedMonths.reduce((sum, month) => sum + month.workers.reduce((workerSum, worker) => workerSum + Object.values(worker.shifts).filter((shift) => shift.rawCode.toUpperCase() === code).length, 0), 0);
+                      return <div key={code} className="grid gap-2 rounded-xl border border-amber-200 bg-white/80 p-3 dark:border-amber-800 dark:bg-slate-900/70 sm:grid-cols-2">
+                        <div className="sm:col-span-2 flex items-center justify-between">
+                          <span className="rounded-lg bg-amber-100 px-2 py-1 font-mono text-xs font-black text-amber-950 dark:bg-amber-900 dark:text-amber-100">{code}</span>
+                          <span className="text-[10px] font-semibold text-slate-500">{occurrences} apariciones</span>
+                        </div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Descripción
+                          <input value={definition.name} onChange={(event) => updateDraftDefinition(code, { name: event.target.value })} className="mt-1 min-h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs dark:border-slate-700 dark:bg-slate-800" />
+                        </label>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Categoría
+                          <select value={definition.category} onChange={(event) => {
+                            const category = event.target.value as ShiftCategory;
+                            updateDraftDefinition(code, { category, color: shiftCategoryColor(category) });
+                          }} className="mt-1 min-h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs dark:border-slate-700 dark:bg-slate-800">
+                            <option value="morning">Mañana</option><option value="afternoon">Tarde</option><option value="night">Noche</option><option value="administrative">Administrativo</option><option value="off">Libre</option><option value="vacation">Vacaciones</option><option value="other">Otro</option>
+                          </select>
+                        </label>
+                        <label className="flex min-h-9 items-center justify-between rounded-lg border border-slate-200 px-2 text-[10px] font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300 sm:col-span-2">Cuenta como día trabajado
+                          <input type="checkbox" checked={definition.isWorkDay} onChange={(event) => updateDraftDefinition(code, { isWorkDay: event.target.checked, defaultStartTime: event.target.checked ? definition.defaultStartTime || '08:00' : '', defaultEndTime: event.target.checked ? definition.defaultEndTime || '16:00' : '' })} className="h-4 w-4 accent-indigo-600" />
+                        </label>
+                        {definition.isWorkDay && <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                          <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Inicio (HH:mm)<input value={definition.defaultStartTime} onChange={(event) => updateDraftDefinition(code, { defaultStartTime: event.target.value })} placeholder="08:00" className="mt-1 min-h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs dark:border-slate-700 dark:bg-slate-800" /></label>
+                          <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Término (HH:mm o 24:00)<input value={definition.defaultEndTime} onChange={(event) => updateDraftDefinition(code, { defaultEndTime: event.target.value })} placeholder="16:00" className="mt-1 min-h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs dark:border-slate-700 dark:bg-slate-800" /></label>
+                        </div>}
+                      </div>;
+                    })}
+                  </div>
+                  <button type="button" onClick={() => {
+                    const valid = definitionReviewEntries.every(([, definition]) => definition.name.trim() && (!definition.isWorkDay || /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(definition.defaultStartTime) && /^(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)$/.test(definition.defaultEndTime)));
+                    if (!valid) {
+                      setErrorMessage('Completa la descripción y horarios válidos para cada acrónimo.');
+                      return;
+                    }
+                    setErrorMessage(null);
+                    setNewShiftCodesConfirmed(true);
+                  }} className={`min-h-10 w-full rounded-xl px-3 text-xs font-black text-white ${newShiftCodesConfirmed ? 'bg-emerald-600' : 'bg-amber-700 hover:bg-amber-600'}`}>
+                    {newShiftCodesConfirmed ? 'Definiciones confirmadas' : 'Confirmar definiciones'}
+                  </button>
+                </section>
+              )}
+
               {isMultiMonthWorkbook && (
                 <section className="overflow-hidden rounded-2xl border border-indigo-200 bg-indigo-50/50 dark:border-indigo-800 dark:bg-indigo-950/30">
                   <div className="flex items-center justify-between gap-3 border-b border-indigo-200/70 px-4 py-3 dark:border-indigo-800/70">
@@ -810,8 +929,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <button
                 type="button"
                 onClick={handleSaveMonth}
-                disabled={isLoading}
+                disabled={isLoading || (definitionReviewEntries.length > 0 && !newShiftCodesConfirmed)}
                 id="save-excel-month-btn"
+                title={definitionReviewEntries.length > 0 && !newShiftCodesConfirmed ? 'Confirma la configuración de los turnos' : undefined}
                 className="min-h-11 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-black text-[11px] shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all text-center leading-tight disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4 shrink-0" />

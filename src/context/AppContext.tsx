@@ -12,13 +12,14 @@ import {
   ImportedWorkerMonth,
   ShiftImportRecord,
   ShiftPeriod,
+  ShiftCodeDefinition,
 } from '../types';
 import { createUserStorage, defaultSettings } from '../utils/storage';
 import { FileStore } from '../utils/fileStore';
 import { detectScheduleConflicts } from '../utils/conflictDetector';
 import {
   COMMON_SHIFT_DEFINITIONS,
-  hydrateShiftDefinitionsFromWorkers,
+  categorizeCode,
   isRealPersonName,
   syncWorkersShiftTimes,
 } from '../utils/excelParser';
@@ -55,6 +56,7 @@ interface AppContextType {
   shiftImports: ShiftImportRecord[];
   cloudSyncStatus: CloudSyncStatus;
   unassignedEventCount: number;
+  shiftDefinitions: Record<string, ShiftCodeDefinition>;
   
   // Actions
   setLanguage: (lang: Language) => void;
@@ -81,6 +83,7 @@ interface AppContextType {
     isWorkDay: boolean,
     name?: string
   ) => void;
+  saveShiftDefinition: (definition: ShiftCodeDefinition, applyToExisting?: boolean) => void;
   
   // Events
   addPersonalEvent: (event: PersonalEventInput) => void;
@@ -116,8 +119,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
       const sanitized = saved.filter((w) => isRealPersonName(w.name));
       if (sanitized.length > 0) {
         const consolidated = consolidateWorkersByIdentity(sanitized);
-        hydrateShiftDefinitionsFromWorkers(consolidated.workers);
-        const synced = syncWorkersShiftTimes(consolidated.workers);
+        const synced = syncWorkersShiftTimes(consolidated.workers, storedSettings.shiftDefinitions);
         const mappedActiveWorkerId = storedSettings.activeWorkerId
           ? consolidated.idAliases.get(storedSettings.activeWorkerId)
           : undefined;
@@ -150,6 +152,10 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
     };
   }, [storage]);
   const [settings, setSettings] = useState<AppSettings>(() => initialData.settings);
+  const shiftDefinitions = useMemo(
+    () => ({ ...COMMON_SHIFT_DEFINITIONS, ...(settings.shiftDefinitions || {}) }),
+    [settings.shiftDefinitions]
+  );
   const [workers, setWorkers] = useState<WorkerProfile[]>(() => initialData.workers);
   const [events, setEvents] = useState<PersonalEvent[]>(() => initialData.events);
   const [evidence, setEvidence] = useState<HorarioEvidence[]>(() => initialData.evidence);
@@ -214,8 +220,6 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
       if (result.status === 'loaded') {
         const remoteWorkers = result.snapshot.workers.filter((worker) => isRealPersonName(worker.name));
         const consolidated = consolidateWorkersByIdentity(remoteWorkers);
-        hydrateShiftDefinitionsFromWorkers(consolidated.workers);
-        const syncedWorkers = syncWorkersShiftTimes(consolidated.workers);
         const remoteSettings = {
           ...defaultSettings,
           ...result.snapshot.settings,
@@ -223,6 +227,10 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
             ? consolidated.idAliases.get(result.snapshot.settings.activeWorkerId)
             : undefined,
         };
+        const syncedWorkers = syncWorkersShiftTimes(
+          consolidated.workers,
+          remoteSettings.shiftDefinitions
+        );
         const remoteEvents = reconcileEventWorkerReferences(
           result.snapshot.events,
           syncedWorkers,
@@ -325,8 +333,8 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
   }, [workers]);
 
   const conflicts = useMemo(() => {
-    return detectScheduleConflicts(activeWorkerEvents, activeWorker, settings.dismissedConflicts);
-  }, [activeWorkerEvents, activeWorker, settings.dismissedConflicts]);
+    return detectScheduleConflicts(activeWorkerEvents, activeWorker, settings.dismissedConflicts, shiftDefinitions);
+  }, [activeWorkerEvents, activeWorker, settings.dismissedConflicts, shiftDefinitions]);
 
   const availableShiftPeriods = useMemo<ShiftPeriod[]>(() => {
     const periodKeys = new Set<string>();
@@ -428,8 +436,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
     let selectedWorkerId: string | undefined;
 
     validImports.forEach((item, index) => {
-      hydrateShiftDefinitionsFromWorkers(mergedWorkers);
-      const syncedWorkers = syncWorkersShiftTimes(item.workers);
+      const syncedWorkers = syncWorkersShiftTimes(item.workers, settings.shiftDefinitions);
       const selectedImportedWorker = item.selectedWorkerId
         ? syncedWorkers.find((worker) => worker.id === item.selectedWorkerId)
         : index === 0
@@ -466,7 +473,6 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
       ? lastChosenWorkerDate.split('-').map(Number)
       : [lastImport.referenceYear, lastImport.referenceMonth];
 
-    hydrateShiftDefinitionsFromWorkers(mergedWorkers);
     setWorkers(mergedWorkers);
     setActiveYear(targetYear);
     setActiveMonth(targetMonth);
@@ -554,14 +560,28 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
     name?: string
   ) => {
     const upperCode = code.toUpperCase().trim();
-    if (COMMON_SHIFT_DEFINITIONS[upperCode]) {
-      COMMON_SHIFT_DEFINITIONS[upperCode].defaultStartTime = newStartTime;
-      COMMON_SHIFT_DEFINITIONS[upperCode].defaultEndTime = newEndTime;
-      COMMON_SHIFT_DEFINITIONS[upperCode].isWorkDay = isWorkDay;
-      if (name) COMMON_SHIFT_DEFINITIONS[upperCode].name = name;
-    }
+    const current = shiftDefinitions[upperCode] || categorizeCode(upperCode);
+    saveShiftDefinition({
+      ...current,
+      code: upperCode,
+      defaultStartTime: isWorkDay ? newStartTime : '',
+      defaultEndTime: isWorkDay ? newEndTime : '',
+      isWorkDay,
+      ...(name ? { name } : {}),
+    });
+  };
 
-    // Replicate new start/end times across ALL workers' shifts that share this rawCode
+  const saveShiftDefinition = (definition: ShiftCodeDefinition, applyToExisting = true) => {
+    const code = definition.code.trim().toUpperCase();
+    if (!code) return;
+    const normalizedDefinition = { ...definition, code };
+    setSettings((prev) => ({
+      ...prev,
+      shiftDefinitions: { ...(prev.shiftDefinitions || {}), [code]: normalizedDefinition },
+    }));
+    if (!applyToExisting) return;
+
+    // Apply the catalog entry to all imported shifts sharing this code.
     setWorkers((prevWorkers) =>
       prevWorkers.map((worker) => {
         let changed = false;
@@ -569,12 +589,14 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
 
         Object.entries(updatedShifts).forEach(([dateStr, shiftVal]) => {
           const shift = shiftVal as DayShift;
-          if (shift && shift.rawCode && shift.rawCode.toUpperCase() === upperCode) {
+          if (shift && shift.rawCode?.trim().toUpperCase() === code) {
             updatedShifts[dateStr] = {
               ...shift,
-              startTime: isWorkDay ? newStartTime : '',
-              endTime: isWorkDay ? newEndTime : '',
-              isWorkDay: isWorkDay,
+              category: normalizedDefinition.category,
+              startTime: normalizedDefinition.isWorkDay ? normalizedDefinition.defaultStartTime : '',
+              endTime: normalizedDefinition.isWorkDay ? normalizedDefinition.defaultEndTime : '',
+              isWorkDay: normalizedDefinition.isWorkDay,
+              editedManually: false,
             };
             changed = true;
           }
@@ -585,6 +607,11 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         return {
           ...worker,
           shifts: updatedShifts,
+          shiftEntries: worker.shiftEntries?.map((entry) =>
+            entry.code.trim().toUpperCase() === code
+              ? { ...entry, category: normalizedDefinition.category }
+              : entry
+          ),
         };
       })
     );
@@ -720,6 +747,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         shiftImports,
         cloudSyncStatus,
         unassignedEventCount,
+        shiftDefinitions,
         setLanguage,
         setTheme,
         setUserRole,
@@ -731,6 +759,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         loadImportedWorkerMonths,
         updateDayShift,
         updateShiftDefinition,
+        saveShiftDefinition,
         addPersonalEvent,
         updatePersonalEvent,
         deletePersonalEvent,

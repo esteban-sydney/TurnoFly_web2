@@ -23,7 +23,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { DayShift, ShiftCategory } from '../types';
-import { COMMON_SHIFT_DEFINITIONS, categorizeCode } from '../utils/excelParser';
+import { categorizeCode } from '../utils/excelParser';
 import { sanitizeClonedDocForHtml2Canvas } from '../utils/html2canvasFix';
 import { normalizeWorkerName } from '../utils/workerImportMerge';
 import {
@@ -48,6 +48,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
     setActiveYearMonth,
     updateDayShift,
     updateShiftDefinition,
+    shiftDefinitions,
   } = useApp();
 
   const lang = settings.language;
@@ -77,7 +78,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
   const [legendNotification, setLegendNotification] = useState<string | null>(null);
 
   const handleOpenLegendEdit = (code: string) => {
-    const def = COMMON_SHIFT_DEFINITIONS[code] || categorizeCode(code);
+    const def = shiftDefinitions[code] || categorizeCode(code, shiftDefinitions);
     setEditingLegendCode(code);
     setLegendName(def.name);
     setLegendStartTime(def.defaultStartTime || (def.isWorkDay ? '08:00' : ''));
@@ -175,7 +176,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
   const handleOpenEdit = (dateStr: string, shift?: DayShift) => {
     setSelectedDate(dateStr);
     const currentCode = shift?.rawCode || 'L';
-    const def = categorizeCode(currentCode);
+    const def = categorizeCode(currentCode, shiftDefinitions);
 
     setEditCode(currentCode);
     setEditCategory(shift?.category || def.category);
@@ -242,7 +243,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
 
       const shift = activeWorker.shifts[dateStr];
       const code = shift?.rawCode || 'L';
-      const def = categorizeCode(code);
+      const def = categorizeCode(code, shiftDefinitions);
       const startTime = shift?.startTime || def.defaultStartTime;
       const endTime = shift?.endTime || def.defaultEndTime;
       const isWorkDay = shift?.isWorkDay ?? def.isWorkDay;
@@ -342,7 +343,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
       {/* Animated shift header */}
       <motion.section
         key={`shift-header-${activeWorker?.id || 'empty'}`}
-        className="relative overflow-hidden rounded-3xl bg-white p-4 pt-5 shadow-lg shadow-indigo-100/60 border border-slate-200/80 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:p-5 sm:pt-6"
+        className="app-surface relative overflow-hidden rounded-3xl bg-white p-4 pt-5 shadow-lg shadow-indigo-100/60 border border-slate-200/80 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:p-5 sm:pt-6"
         initial={prefersReducedMotion ? false : { opacity: 0, y: -14, scale: 0.97 }}
         animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.45, ease: 'easeOut' }}
@@ -483,7 +484,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
       {/* Main Calendar View Container - Fits Single Phone Screen */}
       <div
         ref={calendarRef}
-        className="p-3 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 w-full max-w-full overflow-x-hidden"
+        className="app-surface p-3 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 w-full max-w-full overflow-x-hidden"
       >
         <div>
             {/* Guide hint */}
@@ -532,7 +533,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
 
                   const shift = activeWorker?.shifts?.[dateStr];
                   const code = shift?.rawCode || 'L';
-                  const def = categorizeCode(code);
+                  const def = categorizeCode(code, shiftDefinitions);
                   const hasCustomHours = hasCustomShiftHours(shift, def);
 
                   const today = new Date();
@@ -635,7 +636,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                     onChange={(e) => {
                       const newCode = e.target.value.toUpperCase();
                       setEditCode(newCode);
-                      const def = categorizeCode(newCode);
+                      const def = categorizeCode(newCode, shiftDefinitions);
                       setEditCategory(def.category);
                       setEditStartTime(def.defaultStartTime);
                       setEditEndTime(def.defaultEndTime);
@@ -648,7 +649,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                     onChange={(e) => {
                       const newCode = e.target.value;
                       setEditCode(newCode);
-                      const def = categorizeCode(newCode);
+                      const def = categorizeCode(newCode, shiftDefinitions);
                       setEditCategory(def.category);
                       setEditStartTime(def.defaultStartTime);
                       setEditEndTime(def.defaultEndTime);
@@ -656,21 +657,11 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                     }}
                     className="flex-1 min-w-0 w-full truncate p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-slate-800 dark:text-slate-200 outline-none text-xs sm:text-sm"
                   >
-                    <option value="M">M - Mañana (08:00 - 16:00)</option>
-                    <option value="T">T - Tarde (16:00 - 24:00)</option>
-                    <option value="N">N - Noche (00:00 - 08:00)</option>
-                    <option value="D">D - Diferido (10:00 - 17:00)</option>
-                    <option value="L">L - D?a Libre</option>
-                    <option value="A">A - Admin (08:45 - 17:00)</option>
-                    <option value="AV">AV - Admin Viernes (08:45 - 16:45)</option>
-                    <option value="MTV">MTV - Mañana Sala TV (07:00 - 15:00)</option>
-                    <option value="TTV">TTV - Tarde Sala TV (15:00 - 23:00)</option>
-                    <option value="ALV">ALV - Admin Longovilo (08:45 - 17:15)</option>
-                    <option value="ENL">ENL - Entrante Noche Longovilo (17:00 - 01:00)</option>
-                    <option value="NLV">NLV - Noche Longovilo (23:00 - 08:00)</option>
-                    <option value="ENV">ENV - Entrante Noche Viernes Longovilo (16:00 - 01:00)</option>
-                    <option value="OLV">OLV - Admin Viernes Longovilo (08:45 - 16:15)</option>
-                    <option value="X">X - Presencial NOC (CNT) (08:30 - 17:30)</option>
+                    {Object.values(shiftDefinitions).sort((left, right) => left.code.localeCompare(right.code)).map((definition) => (
+                      <option key={definition.code} value={definition.code}>
+                        {definition.code} - {definition.name} ({definition.isWorkDay ? `${definition.defaultStartTime} - ${definition.defaultEndTime}` : 'Libre'})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -716,7 +707,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                           setEditEndTime(
                             fromTimeInputValue(
                               e.target.value,
-                              categorizeCode(editCode).defaultEndTime
+                              categorizeCode(editCode, shiftDefinitions).defaultEndTime
                             )
                           )
                         }
@@ -739,7 +730,7 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
                           isWorkDay: editIsWorkDay,
                           editedManually: true,
                         },
-                        categorizeCode(editCode)
+                        categorizeCode(editCode, shiftDefinitions)
                       ) ? (
                       <p className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 dark:text-sky-300">
                         <Clock className="h-3 w-3" />

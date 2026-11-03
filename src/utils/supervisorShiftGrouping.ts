@@ -32,7 +32,8 @@ const sortByName = (left: SupervisorWorkerShift, right: SupervisorWorkerShift) =
 
 export const groupWorkersForSupervisorDate = (
   workers: WorkerProfile[],
-  date: string
+  date: string,
+  shiftDefinitions: Record<string, ShiftCodeDefinition> = {}
 ): SupervisorShiftGroups => {
   const groups: SupervisorShiftGroups = {
     morning: [],
@@ -59,7 +60,7 @@ export const groupWorkersForSupervisorDate = (
     }
 
     const rawCode = shift.rawCode.trim().toUpperCase();
-    const def = categorizeCode(rawCode);
+    const def = categorizeCode(rawCode, shiftDefinitions);
     const item = { ...baseItem, def };
 
     if (

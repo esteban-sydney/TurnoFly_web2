@@ -23,6 +23,19 @@ export const MONTH_NAMES_ES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
+export const shiftCategoryColor = (category: ShiftCategory): string => {
+  const colors: Record<ShiftCategory, string> = {
+    morning: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-700',
+    afternoon: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-950 dark:text-orange-200 dark:border-orange-700',
+    night: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-700',
+    administrative: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600',
+    off: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-700',
+    vacation: 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-200 dark:border-sky-700',
+    other: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-200 dark:border-indigo-700',
+  };
+  return colors[category];
+};
+
 export function isRealPersonName(name: string): boolean {
   if (!name || typeof name !== 'string') return false;
   const clean = name.trim();
@@ -104,8 +117,12 @@ export function isRealPersonName(name: string): boolean {
   return true;
 }
 
-export function categorizeCode(rawCode: string): ShiftCodeDefinition {
+export function categorizeCode(
+  rawCode: string,
+  customDefinitions: Record<string, ShiftCodeDefinition> = {}
+): ShiftCodeDefinition {
   const clean = rawCode?.toString().trim().toUpperCase() || 'L';
+  if (customDefinitions[clean]) return customDefinitions[clean];
   if (COMMON_SHIFT_DEFINITIONS[clean]) {
     return COMMON_SHIFT_DEFINITIONS[clean];
   }
@@ -130,6 +147,7 @@ export function categorizeCode(rawCode: string): ShiftCodeDefinition {
   return { code: clean, name: `Turno ${clean}`, category: 'other', defaultStartTime: '08:00', defaultEndTime: '16:00', isWorkDay: true, color: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-200 dark:border-indigo-700' };
 }
 
+/** Compatibility helper for legacy consumers that hydrate shared defaults from saved shifts. */
 export function hydrateShiftDefinitionsFromWorkers(workersList: WorkerProfile[]): void {
   const hydratedCodes = new Set<string>();
   const datedShifts = workersList
@@ -142,7 +160,6 @@ export function hydrateShiftDefinitionsFromWorkers(workersList: WorkerProfile[])
   datedShifts.forEach(([, shift]) => {
     const code = shift.rawCode?.trim().toUpperCase();
     if (!code || hydratedCodes.has(code)) return;
-
     const currentDefinition = categorizeCode(code);
     COMMON_SHIFT_DEFINITIONS[code] = {
       ...currentDefinition,
@@ -156,7 +173,10 @@ export function hydrateShiftDefinitionsFromWorkers(workersList: WorkerProfile[])
   });
 }
 
-export function syncWorkersShiftTimes(workersList: WorkerProfile[]): WorkerProfile[] {
+export function syncWorkersShiftTimes(
+  workersList: WorkerProfile[],
+  shiftDefinitions: Record<string, ShiftCodeDefinition> = {}
+): WorkerProfile[] {
   if (!workersList || !Array.isArray(workersList)) return [];
   return workersList.map((worker) => {
     let modified = false;
@@ -165,9 +185,11 @@ export function syncWorkersShiftTimes(workersList: WorkerProfile[]): WorkerProfi
     Object.keys(updatedShifts).forEach((dateKey) => {
       const shift = updatedShifts[dateKey];
       if (shift?.editedManually) return;
+      // Imported entries retain the definition snapshot used by their source file.
+      if (shift?.startTime !== undefined && shift?.endTime !== undefined) return;
 
       if (shift && shift.rawCode) {
-        const def = categorizeCode(shift.rawCode);
+        const def = categorizeCode(shift.rawCode, shiftDefinitions);
         if (def) {
           if (
             shift.startTime !== def.defaultStartTime ||
@@ -276,6 +298,7 @@ export interface ValidateAndMapOptions {
   referenceMonth: number; // 1-12
   referenceYear: number;
   outOfRangePolicy?: OutOfRangePolicy;
+  shiftDefinitions?: Record<string, ShiftCodeDefinition>;
 }
 
 export interface ValidateAndMapResult {
@@ -317,7 +340,7 @@ export function validateAndMapEntries(
       return;
     }
 
-    const def = categorizeCode(item.rawCode);
+    const def = categorizeCode(item.rawCode, options.shiftDefinitions);
 
     const dayShift: DayShift = {
       date: dateStr,
@@ -375,7 +398,119 @@ export interface ParseExcelWorkbookResult {
   months: ParseExcelResult[];
   detectedBlockCount: number;
   skippedBlocks: SkippedExcelMonthBlock[];
+  detectedShiftDefinitions: Record<string, ShiftCodeDefinition>;
 }
+
+const getClockValue = (value: unknown): string | null => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${String(value.getUTCHours()).padStart(2, '0')}:${String(value.getUTCMinutes()).padStart(2, '0')}`;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const totalMinutes = Math.round((value % 1) * 24 * 60);
+    return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+  }
+  const match = String(value ?? '').trim().match(/^(\d{1,2}):([0-5]\d)$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  if (hour > 24 || (hour === 24 && Number(match[2]) !== 0)) return null;
+  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+};
+
+const getCategoryFromLegend = (label: string, fallback: ShiftCategory): ShiftCategory => {
+  const normalized = label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (/\b(libre|descanso|vacacion|feriado)\b/.test(normalized)) return 'off';
+  if (/\b(tarde|afternoon)\b/.test(normalized)) return 'afternoon';
+  if (/\b(noche|night)\b/.test(normalized)) return 'night';
+  if (/\b(administrativo|administrative)\b/.test(normalized)) return 'administrative';
+  if (/\b(manana|diferido|morning)\b/.test(normalized)) return 'morning';
+  return fallback;
+};
+
+/** Reads code definitions from legend rows without relying on IN/OUT labels or fixed time columns. */
+type XlsxLegendUtilities = {
+  decode_range: (range: string) => { s: { r: number; c: number }; e: { r: number; c: number } };
+  encode_cell: (cell: { r: number; c: number }) => string;
+};
+
+const detectShiftDefinitionsFromWorkbook = (
+  workbook: { SheetNames: string[]; Sheets: Record<string, Record<string, any>> },
+  utilities: XlsxLegendUtilities,
+  baseDefinitions: Record<string, ShiftCodeDefinition>
+): Record<string, ShiftCodeDefinition> => {
+  const found: Record<string, ShiftCodeDefinition> = {};
+  const ambiguous = new Set<string>();
+
+  workbook.SheetNames.forEach((sheetName) => {
+    const sheet = workbook.Sheets[sheetName];
+    const range = sheet?.['!ref'];
+    if (!range) return;
+    const bounds = utilities.decode_range(range);
+
+    for (let rowIndex = bounds.s.r; rowIndex <= bounds.e.r; rowIndex += 1) {
+      const rowCells = Array.from({ length: bounds.e.c - bounds.s.c + 1 }, (_, offset) => {
+        const colIndex = bounds.s.c + offset;
+        return { colIndex, cell: sheet[utilities.encode_cell({ r: rowIndex, c: colIndex })] };
+      });
+      const legendCell = rowCells.find(({ cell }) => {
+        const text = String(cell?.w ?? cell?.v ?? '').trim();
+        return /\([^()]{1,30}\)\s*$/.test(text);
+      });
+      if (!legendCell) continue;
+
+      const label = String(legendCell.cell?.w ?? legendCell.cell?.v ?? '').trim();
+      const codeMatch = label.match(/\(([A-Za-z0-9_-]{1,30})\)\s*$/);
+      if (!codeMatch) continue;
+      const code = codeMatch[1].toUpperCase();
+      const name = label.replace(/\s*\([A-Za-z0-9_-]{1,30}\)\s*$/, '').trim();
+      const times = rowCells
+        .filter(({ colIndex }) => colIndex !== legendCell.colIndex)
+        .map(({ cell }) => getClockValue(cell?.w ?? cell?.v))
+        .filter((time): time is string => Boolean(time));
+      const fallback = baseDefinitions[code] || categorizeCode(code, baseDefinitions);
+      const category = getCategoryFromLegend(name, fallback.category);
+      const isWorkDay = category !== 'off' && category !== 'vacation';
+
+      if (!isWorkDay && times.length === 0) {
+        found[code] = {
+          ...fallback,
+          code,
+          name: name || fallback.name,
+          category,
+          defaultStartTime: '',
+          defaultEndTime: '',
+          isWorkDay: false,
+          color: shiftCategoryColor(category),
+        };
+        continue;
+      }
+      if (times.length < 2) continue;
+
+      const definition: ShiftCodeDefinition = {
+        ...fallback,
+        code,
+        name: name || fallback.name,
+        category,
+        defaultStartTime: times[0],
+        defaultEndTime: times[1],
+        isWorkDay: true,
+        color: shiftCategoryColor(category),
+      };
+      const previous = found[code];
+      if (previous && (
+        previous.defaultStartTime !== definition.defaultStartTime ||
+        previous.defaultEndTime !== definition.defaultEndTime ||
+        previous.category !== definition.category
+      )) {
+        ambiguous.add(code);
+      } else {
+        found[code] = definition;
+      }
+    }
+  });
+
+  ambiguous.forEach((code) => delete found[code]);
+  return found;
+};
 
 interface ExcelMonthBlock {
   sheetName: string;
@@ -525,7 +660,8 @@ export async function parseExcelBuffer(
   buffer: ArrayBuffer,
   targetYear?: number,
   targetMonth?: number,
-  outOfRangePolicy: OutOfRangePolicy = 'ignore'
+  outOfRangePolicy: OutOfRangePolicy = 'ignore',
+  shiftDefinitions: Record<string, ShiftCodeDefinition> = {}
 ): Promise<ParseExcelResult> {
   const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
@@ -717,6 +853,7 @@ export async function parseExcelBuffer(
         referenceMonth: month,
         referenceYear: year,
         outOfRangePolicy,
+        shiftDefinitions,
       });
 
       totalShiftsCount += shiftEntries.length;
@@ -774,6 +911,7 @@ export async function parseExcelBuffer(
           referenceMonth: month,
           referenceYear: year,
           outOfRangePolicy,
+          shiftDefinitions,
         });
 
         totalShiftsCount += shiftEntries.length;
@@ -824,10 +962,20 @@ export async function parseExcelWorkbookBuffer(
   buffer: ArrayBuffer,
   targetYear?: number,
   targetMonth?: number,
-  outOfRangePolicy: OutOfRangePolicy = 'ignore'
+  outOfRangePolicy: OutOfRangePolicy = 'ignore',
+  shiftDefinitions: Record<string, ShiftCodeDefinition> = {}
 ): Promise<ParseExcelWorkbookResult> {
   const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  const detectedShiftDefinitions = detectShiftDefinitionsFromWorkbook(
+    workbook,
+    XLSX.utils,
+    shiftDefinitions
+  );
+  const effectiveShiftDefinitions = {
+    ...shiftDefinitions,
+    ...detectedShiftDefinitions,
+  };
   const detectedBlocks = workbook.SheetNames.flatMap((sheetName) => {
     const rows: any[][] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
       header: 1,
@@ -839,9 +987,10 @@ export async function parseExcelWorkbookBuffer(
   // A workbook with zero or one block keeps the established reference-month workflow.
   if (detectedBlocks.length < 2) {
     return {
-      months: [await parseExcelBuffer(buffer, targetYear, targetMonth, outOfRangePolicy)],
+      months: [await parseExcelBuffer(buffer, targetYear, targetMonth, outOfRangePolicy, effectiveShiftDefinitions)],
       detectedBlockCount: detectedBlocks.length,
       skippedBlocks: [],
+      detectedShiftDefinitions,
     };
   }
 
@@ -889,7 +1038,8 @@ export async function parseExcelWorkbookBuffer(
         blockBuffer,
         inferredYear,
         block.month,
-        outOfRangePolicy
+        outOfRangePolicy,
+        effectiveShiftDefinitions
       );
       const sourceSheetName = block.sheetName;
       parsedMonths.push({
@@ -935,6 +1085,7 @@ export async function parseExcelWorkbookBuffer(
     ),
     detectedBlockCount: detectedBlocks.length,
     skippedBlocks,
+    detectedShiftDefinitions,
   };
 }
 

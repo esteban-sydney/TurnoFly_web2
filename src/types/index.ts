@@ -125,4 +125,6 @@ export interface AppSettings {
   referenceMonth?: number;
   referenceYear?: number;
   shiftImports?: ShiftImportRecord[];
+  /** User-owned definitions and overrides for imported shift acronyms. */
+  shiftDefinitions?: Record<string, ShiftCodeDefinition>;
 }

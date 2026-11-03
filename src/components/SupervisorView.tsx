@@ -28,7 +28,7 @@ const formatShiftCodeBadge = (code: string, count: number) => (
 );
 
 export const SupervisorView: React.FC = () => {
-  const { settings, workers, setActiveWorkerId } = useApp();
+  const { settings, workers, setActiveWorkerId, shiftDefinitions } = useApp();
   const lang = settings.language;
   const monthNames = getTranslation(lang, 'months');
 
@@ -85,8 +85,8 @@ export const SupervisorView: React.FC = () => {
   };
 
   const groupedShifts = React.useMemo(
-    () => groupWorkersForSupervisorDate(workers, selectedDateStr),
-    [workers, selectedDateStr]
+    () => groupWorkersForSupervisorDate(workers, selectedDateStr, shiftDefinitions),
+    [workers, selectedDateStr, shiftDefinitions]
   );
 
   const similarWorkerNames = React.useMemo(() => findSimilarWorkerNames(workers), [workers]);
@@ -264,7 +264,7 @@ export const SupervisorView: React.FC = () => {
       <div className="space-y-4">
         
         {/* 1. TURNO NOCHE */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="app-surface p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-2xl bg-indigo-950 text-indigo-300 flex items-center justify-center font-black border border-indigo-800">
@@ -323,7 +323,7 @@ export const SupervisorView: React.FC = () => {
         </div>
 
         {/* 2. TURNO MAÑANA / JORNADA DIURNA */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="app-surface p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 flex items-center justify-center font-black border border-amber-200 dark:border-amber-800">
@@ -382,7 +382,7 @@ export const SupervisorView: React.FC = () => {
         </div>
 
         {/* 3. TURNO TARDE */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="app-surface p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-2xl bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 flex items-center justify-center font-black border border-orange-200 dark:border-orange-800">
@@ -438,7 +438,7 @@ export const SupervisorView: React.FC = () => {
         </div>
 
         {/* 4. LIBRES Y DESCANSO (SÓLO PERSONAS, ALFABÉTICAMENTE ORDENADOS) */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="app-surface p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 flex items-center justify-center font-black border border-emerald-200 dark:border-emerald-800">
@@ -486,7 +486,7 @@ export const SupervisorView: React.FC = () => {
         </div>
 
         {groupedShifts.unknown.length > 0 && (
-          <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-sm space-y-3">
+          <div className="app-surface p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-sm space-y-3">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
               <div className="w-9 h-9 rounded-2xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700">
                 <CircleHelp className="w-5 h-5" />

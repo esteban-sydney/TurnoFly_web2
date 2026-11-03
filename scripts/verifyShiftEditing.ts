@@ -44,8 +44,8 @@ const standardShift = syncedWorkers[0].shifts['2026-08-28'];
 
 assert.equal(customShift.startTime, '08:00');
 assert.equal(customShift.endTime, '20:00');
-assert.equal(standardShift.startTime, COMMON_SHIFT_DEFINITIONS.M.defaultStartTime);
-assert.equal(standardShift.endTime, COMMON_SHIFT_DEFINITIONS.M.defaultEndTime);
+assert.equal(standardShift.startTime, '07:00');
+assert.equal(standardShift.endTime, '15:00');
 assert.equal(hasCustomShiftHours(customShift, COMMON_SHIFT_DEFINITIONS.M), true);
 assert.equal(hasCustomShiftHours(standardShift, COMMON_SHIFT_DEFINITIONS.M), false);
 

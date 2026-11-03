@@ -91,7 +91,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         variants={fadeInUp}
       >
         {/* Welcome Hero Banner - Geometric Balance */}
-        <div className="relative rounded-3xl bg-indigo-600 text-white p-8 sm:p-12 overflow-hidden shadow-xl shadow-indigo-100 dark:shadow-none mb-8">
+        <div className="home-empty-hero relative rounded-3xl bg-indigo-600 text-white p-8 sm:p-12 overflow-hidden shadow-xl shadow-indigo-100 dark:shadow-none mb-8">
           <div className="absolute top-0 right-0 -mt-12 -mr-12 w-80 h-80 bg-white/10 rounded-full blur-2xl pointer-events-none" />
           
           <div className="relative z-10 max-w-2xl">
@@ -125,7 +125,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         {/* Action Cards Grid - Geometric Balance */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <motion.div
-            className="p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-xl transition-all flex flex-col justify-between"
+            className="home-empty-action-card p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-xl transition-all flex flex-col justify-between"
             whileHover={cardMotion.whileHover}
             whileTap={cardMotion.whileTap}
             transition={cardMotion.transition}
@@ -154,7 +154,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </motion.div>
 
           <motion.div
-            className="p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-xl transition-all flex flex-col justify-between"
+            className="home-empty-action-card home-empty-action-card-danger p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-xl transition-all flex flex-col justify-between"
             whileHover={cardMotion.whileHover}
             whileTap={cardMotion.whileTap}
             transition={cardMotion.transition}
@@ -190,7 +190,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Supervisor Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-100 dark:shadow-none mb-8">
+        <div className="home-supervisor-hero relative isolate overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-100 dark:shadow-none mb-8">
           <div>
             <div className="flex items-center gap-2 text-indigo-200 text-xs font-bold uppercase tracking-widest mb-1">
               <Users className="w-4 h-4" /> MODO JEFATURA
@@ -222,7 +222,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         {/* Supervisor Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all">
+          <div className="home-metric-card p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{getTranslation(lang, 'workersDetected')}</span>
               <div className="p-2.5 rounded-xl bg-indigo-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs">
@@ -233,7 +233,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">Activos en la planilla Excel</p>
           </div>
 
-          <div className="p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all">
+          <div className="home-metric-card p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{getTranslation(lang, 'currentlyOnShift')}</span>
               <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 shadow-xs">
@@ -246,7 +246,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">Turno Mañana / Tarde activo</p>
           </div>
 
-          <div className="p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all">
+          <div className="home-metric-card p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{getTranslation(lang, 'nextShiftChange')}</span>
               <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 shadow-xs">
@@ -257,7 +257,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">Relevo Turno Tarde (T)</p>
           </div>
 
-          <div className="p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all">
+          <div className="home-metric-card p-6 rounded-3xl glass-card border border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Días Libres / Rotación</span>
               <div className="p-2.5 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 shadow-xs">
@@ -270,7 +270,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* Worker Quick Roster List */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="app-surface p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Personal Registrado</p>
@@ -293,7 +293,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   setActiveWorkerId(w.id);
                   setActiveView('shifts');
                 }}
-                className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition-all cursor-pointer group"
+                className="group rounded-2xl border border-slate-200/90 bg-gradient-to-br from-slate-50 via-white to-indigo-50/70 p-5 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-950/5 dark:border-slate-700 dark:from-slate-800 dark:via-slate-800/90 dark:to-indigo-950/40 dark:hover:border-indigo-700 cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
@@ -321,29 +321,36 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Active worker header */}
       <motion.section
-        className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/70 dark:shadow-none mb-8"
+        className="home-profile-card relative isolate overflow-hidden rounded-[2rem] text-slate-900 dark:text-white mb-8"
         initial="initial"
         animate="animate"
         variants={fadeInUp}
       >
-        <div className="absolute inset-y-0 left-0 w-1.5 bg-indigo-500" />
+        <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-violet-500 via-indigo-500 to-sky-400" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-32 h-72 w-72 rounded-full bg-indigo-200/45 blur-3xl dark:bg-indigo-500/10" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 right-1/4 h-48 w-48 rounded-full bg-sky-100/70 blur-3xl dark:bg-sky-500/5" />
 
-        <div className="p-5 sm:p-7">
+        <div className="relative p-5 sm:p-7">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-600 dark:bg-indigo-500 border border-indigo-400/30 flex items-center justify-center font-black text-lg sm:text-xl text-white uppercase shrink-0 shadow-md shadow-indigo-200 dark:shadow-indigo-950/30">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 text-lg font-black uppercase text-white shadow-lg shadow-indigo-500/25 ring-4 ring-white/70 dark:border-white/10 dark:ring-slate-800/70 sm:h-16 sm:w-16 sm:text-xl">
                 {activeWorker?.name?.substring(0, 2) || 'ES'}
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-300 mb-1">
-                  Perfil activo
-                </p>
+                <span className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50/90 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-indigo-700 dark:border-indigo-400/15 dark:bg-indigo-400/10 dark:text-indigo-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/15" /> Perfil activo
+                </span>
                 <h1 className="text-2xl sm:text-3xl font-black leading-tight text-slate-950 dark:text-white break-words">
                   {activeWorker?.name || 'Trabajador'}
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-300 mt-1.5">
-                  {activeWorker?.role || 'Operador / Técnico'} · {activeWorker?.department || 'Operaciones'}
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center rounded-lg border border-slate-200/80 bg-white/75 px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                    {activeWorker?.role || 'Operador / Técnico'}
+                  </span>
+                  <span className="inline-flex items-center rounded-lg border border-sky-100 bg-sky-50/80 px-2.5 py-1 text-[10px] font-bold text-sky-800 dark:border-sky-900/70 dark:bg-sky-950/50 dark:text-sky-200">
+                    {activeWorker?.department || 'Operaciones'}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -373,11 +380,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 mt-5 pt-5 border-t border-slate-200 dark:border-white/10">
+          <div className="grid grid-cols-1 gap-2.5 mt-5 pt-5 border-t border-indigo-100/80 dark:border-white/10 sm:grid-cols-2">
             <motion.button
               onClick={() => setActiveView('shifts')}
               id="worker-my-shifts-btn"
-              className="group min-h-12 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-600 font-bold text-[10px] sm:text-xs uppercase tracking-wider shadow-md shadow-indigo-200 dark:shadow-none flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="group min-h-12 px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border border-indigo-500/70 font-bold text-[10px] sm:text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/20 dark:shadow-indigo-950/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
               whileHover={{ y: -3, scale: 1.015 }}
               whileTap={{ scale: 0.93, rotate: -1.5 }}
               transition={{ type: 'spring', stiffness: 460, damping: 20 }}
@@ -389,7 +396,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <motion.button
               onClick={() => setActiveView('personal')}
               id="worker-personal-calendar-btn"
-              className="group min-h-12 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800 font-bold text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="group min-h-12 px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 dark:from-amber-950/50 dark:to-orange-950/40 dark:hover:from-amber-950/70 dark:hover:to-orange-950/60 text-amber-950 dark:text-amber-100 border border-amber-200/90 dark:border-amber-800/80 font-bold text-[10px] sm:text-xs uppercase tracking-wider shadow-sm shadow-amber-900/5 flex items-center justify-center gap-2 transition-all cursor-pointer"
               whileHover={{ y: -3, scale: 1.015 }}
               whileTap={{ scale: 0.93, rotate: 1.5 }}
               transition={{ type: 'spring', stiffness: 460, damping: 20 }}
@@ -403,7 +410,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       </motion.section>
 
       {/* Informational reminders. Editing lives only in Agenda. */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm mb-8">
+      <div className="app-surface p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm mb-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl shrink-0 bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400">
@@ -430,19 +437,23 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 type="button"
                 key={event.id}
                 onClick={() => onOpenPersonalEvent(event.id)}
-                className="w-full p-4 rounded-3xl border shadow-sm text-xs text-left bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50 hover:border-emerald-400 dark:hover:border-emerald-600 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                className="group relative w-full overflow-hidden rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-white via-white to-emerald-50 p-4 text-left text-xs shadow-sm shadow-emerald-950/5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-emerald-900/80 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/35 dark:hover:border-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
               >
+                <span aria-hidden="true" className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-emerald-400" />
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <div className="min-w-0">
-                    <span className="mb-1 inline-flex rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                    <span className="mb-1.5 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
                       {status === 'ongoing' ? 'En curso' : 'Próxima'}
                     </span>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                      {event.title} {formattedEventDate(event.date)} a las {event.startTime}
+                    <p className="text-sm font-extrabold leading-tight text-slate-900 dark:text-white">
+                      {event.title}
+                    </p>
+                    <p className="mt-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                      {formattedEventDate(event.date)} · {event.startTime}
                     </p>
                     <p className="mt-2 font-semibold leading-relaxed text-emerald-800 dark:text-emerald-300">
-                      Sin conflicto con tus turnos.
+                      Sin conflicto con tus turnos
                     </p>
                   </div>
                 </div>
@@ -451,14 +462,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             })}
           </div>
         ) : (
-          <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center">
-            No hay próximas citas sin conflicto en este mes.
+          <div className="home-empty-notice border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/70 dark:bg-emerald-950/20 dark:text-emerald-200">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span>No hay próximas citas sin conflicto en este mes.</span>
           </div>
         )}
       </div>
 
       {/* Informational conflicts. Editing lives only in Agenda. */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm mb-8">
+      <div className="app-surface p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm mb-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl shrink-0 bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400">
@@ -486,16 +498,20 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   type="button"
                   key={event.id}
                   onClick={() => onOpenPersonalEvent(event.id)}
-                  className="w-full p-4 rounded-3xl border shadow-sm text-xs text-left bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50 hover:border-amber-400 dark:hover:border-amber-600 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+                  className="group relative w-full overflow-hidden rounded-2xl border border-amber-200/90 bg-gradient-to-br from-white via-white to-amber-50 p-4 text-left text-xs shadow-sm shadow-amber-950/5 transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md dark:border-amber-900/80 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/35 dark:hover:border-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
                 >
+                  <span aria-hidden="true" className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-amber-400" />
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
                     <div className="min-w-0">
-                      <span className="mb-1 inline-flex rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
+                      <span className="mb-1.5 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
                         {status === 'ongoing' ? 'En curso' : 'Próxima'}
                       </span>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                        {event.title} {formattedEventDate(event.date)} a las {event.startTime}
+                      <p className="text-sm font-extrabold leading-tight text-slate-900 dark:text-white">
+                        {event.title}
+                      </p>
+                      <p className="mt-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                        {formattedEventDate(event.date)} · {event.startTime}
                       </p>
                       <p className="mt-2 font-semibold leading-relaxed text-amber-900 dark:text-amber-200">
                         Tiene conflicto con turno {conflict.shiftCode} de ese día.
@@ -507,8 +523,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             })}
           </div>
         ) : (
-          <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center">
-            No hay próximas citas con conflicto en este mes.
+          <div className="home-empty-notice border-slate-200 bg-slate-50/80 text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+            <CalendarIcon className="h-5 w-5 shrink-0 text-slate-400" />
+            <span>No hay próximas citas con conflicto en este mes.</span>
           </div>
         )}
       </div>
@@ -517,7 +534,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
       {/* Secondary Management Controls Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div className="home-management-card app-surface p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div>
             <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
               <FileSpreadsheet className="w-5 h-5" />
@@ -540,7 +557,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </button>
         </div>
 
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div className="home-management-card app-surface p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div>
             <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-3">
               <RotateCcw className="w-5 h-5" />

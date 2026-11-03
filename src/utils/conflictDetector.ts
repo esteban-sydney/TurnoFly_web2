@@ -1,4 +1,4 @@
-import { DayShift, PersonalEvent, ConflictAlert, WorkerProfile } from '../types';
+import { DayShift, PersonalEvent, ConflictAlert, WorkerProfile, ShiftCodeDefinition } from '../types';
 import { categorizeCode } from './excelParser';
 
 function parseTimeToMinutes(timeStr?: string): number | null {
@@ -30,7 +30,8 @@ function shiftCrossesMidnight(shift: DayShift): boolean {
 export function detectScheduleConflicts(
   events: PersonalEvent[],
   worker?: WorkerProfile,
-  dismissedConflictIds: string[] = []
+  dismissedConflictIds: string[] = [],
+  shiftDefinitions: Record<string, ShiftCodeDefinition> = {}
 ): ConflictAlert[] {
   if (!worker || !worker.shifts || events.length === 0) {
     return [];
@@ -101,7 +102,7 @@ export function detectScheduleConflicts(
           eventDate: event.date,
           eventTime: `${event.startTime} - ${event.endTime}`,
           shiftCode: shift.rawCode,
-          shiftName: categorizeCode(shift.rawCode).name,
+          shiftName: categorizeCode(shift.rawCode, shiftDefinitions).name,
           shiftTime: `${shift.startTime} - ${shift.endTime}`,
           workerName: worker.name,
           message: `La cita "${event.title}" (${event.startTime} - ${event.endTime}) coincide con tu turno ${shift.rawCode} (${shift.startTime} - ${shift.endTime}).`,

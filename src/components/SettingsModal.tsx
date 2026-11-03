@@ -14,11 +14,13 @@ import {
   Share2,
   PlusSquare,
   CheckCircle2,
+  Clock3,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../utils/i18n';
 import { buttonMotion } from '../utils/motionVariants';
 import { usePwaInstall } from '../hooks/usePwaInstall';
+import { ShiftDefinitionsModal } from './ShiftDefinitionsModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -45,6 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [installStatus, setInstallStatus] = useState<string | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [showShiftDefinitions, setShowShiftDefinitions] = useState(false);
   const { canInstall, install, isInstalled, isIos, isSecureContext } = usePwaInstall();
 
   if (!isOpen) return null;
@@ -122,6 +125,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-6 text-xs flex-1">
+
+          <button type="button" onClick={() => setShowShiftDefinitions(true)} className="flex min-h-14 w-full items-center justify-between rounded-2xl border border-indigo-200 bg-indigo-50 px-4 text-left dark:border-indigo-800 dark:bg-indigo-950/40">
+            <span>
+              <span className="flex items-center gap-2 text-sm font-black text-indigo-900 dark:text-indigo-100"><Clock3 className="h-4 w-4" /> Catálogo de turnos</span>
+              <span className="mt-1 block text-[11px] text-slate-600 dark:text-slate-400">Configura acrónimos y horarios para las planillas Excel.</span>
+            </span>
+            <span className="text-xs font-black text-indigo-700 dark:text-indigo-300">Abrir</span>
+          </button>
           
           {/* Theme Section */}
           <div className="space-y-2">
@@ -326,6 +337,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
       </div>
+      {showShiftDefinitions && <ShiftDefinitionsModal onClose={() => setShowShiftDefinitions(false)} />}
     </div>
   );
 };

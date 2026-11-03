@@ -1,4 +1,4 @@
-import { AppSettings, WorkerProfile, PersonalEvent, HorarioEvidence } from '../types';
+import { AppSettings, WorkerProfile, PersonalEvent, HorarioEvidence, ShiftCodeDefinition } from '../types';
 
 const MAX_BACKUP_CHARACTERS = 10_000_000;
 const MAX_WORKERS = 5_000;
@@ -33,6 +33,21 @@ const isOptionalString = (value: unknown): value is string | undefined =>
 
 const isOptionalBoolean = (value: unknown): value is boolean | undefined =>
   value === undefined || typeof value === 'boolean';
+
+const isShiftDefinition = (value: unknown, code: string): value is ShiftCodeDefinition => {
+  if (!isRecord(value)) return false;
+  return (
+    value.code === code && code.length <= 30 &&
+    typeof value.name === 'string' && value.name.trim().length > 0 && value.name.length <= 100 &&
+    typeof value.category === 'string' && SHIFT_CATEGORIES.has(value.category) &&
+    typeof value.defaultStartTime === 'string' &&
+    (value.defaultStartTime === '' || TIME_PATTERN.test(value.defaultStartTime)) &&
+    typeof value.defaultEndTime === 'string' &&
+    (value.defaultEndTime === '' || TIME_PATTERN.test(value.defaultEndTime)) &&
+    typeof value.isWorkDay === 'boolean' &&
+    typeof value.color === 'string' && value.color.length <= 300
+  );
+};
 
 const isValidMonth = (value: unknown): value is number =>
   Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 12;
@@ -192,6 +207,7 @@ export const defaultSettings: AppSettings = {
   defaultRemoteMode: true,
   dismissedConflicts: [],
   shiftImports: [],
+  shiftDefinitions: {},
 };
 
 const sanitizeSettings = (value: unknown): AppSettings | null => {
@@ -269,6 +285,14 @@ const sanitizeSettings = (value: unknown): AppSettings | null => {
       return null;
     }
     settings.shiftImports = value.shiftImports as AppSettings['shiftImports'];
+  }
+  if (value.shiftDefinitions !== undefined) {
+    if (!isRecord(value.shiftDefinitions)) return null;
+    const entries = Object.entries(value.shiftDefinitions);
+    if (entries.length > 300 || !entries.every(([code, definition]) => isShiftDefinition(definition, code))) {
+      return null;
+    }
+    settings.shiftDefinitions = value.shiftDefinitions as AppSettings['shiftDefinitions'];
   }
 
   return settings;

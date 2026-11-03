@@ -340,7 +340,11 @@ assert.ok(conflicts.some((conflict) => conflict.eventId === 'event_cross_month')
 hydrateShiftDefinitionsFromWorkers(augustWorkers);
 const syncedAfterReload = syncWorkersShiftTimes(septemberWorkers);
 assert.equal(COMMON_SHIFT_DEFINITIONS.M.defaultStartTime, '07:30');
-assert.equal(syncedAfterReload[0].shifts['2026-09-01'].startTime, '07:30');
+assert.equal(
+  syncedAfterReload[0].shifts['2026-09-01'].startTime,
+  '08:00',
+  'Recargar no debe reescribir el horario capturado en el archivo de septiembre.'
+);
 
 const workbook = XLSX.utils.book_new();
 const worksheet = XLSX.utils.aoa_to_sheet([
