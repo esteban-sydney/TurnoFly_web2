@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { getTranslation } from '../utils/i18n';
 import { Language } from '../types';
-import { buttonMotion, fadeInUp } from '../utils/motionVariants';
+import { buttonMotion } from '../utils/motionVariants';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -39,11 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
           : 'Sincronizando agenda';
 
   return (
-    <motion.header
+    <header
       className="app-safe-header sticky top-0 z-30 w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors px-3 sm:px-6 md:px-10 pb-2.5 shrink-0 shadow-xs"
-      initial="initial"
-      animate="animate"
-      variants={fadeInUp}
     >
       
       {/* Responsive Row Container: Left to Right Alignment */}
@@ -243,6 +240,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 };

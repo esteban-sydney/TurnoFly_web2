@@ -46,6 +46,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const lang = settings.language;
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [installStatus, setInstallStatus] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [showShiftDefinitions, setShowShiftDefinitions] = useState(false);
   const { canInstall, install, isInstalled, isIos, isSecureContext } = usePwaInstall();
@@ -93,6 +94,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } else {
       setInstallStatus(null);
       setShowInstallHelp(true);
+    }
+  };
+
+  const handleShareApp = async () => {
+    const url = window.location.origin;
+    const shareData = {
+      title: 'TurnoFly',
+      text: getTranslation(lang, 'shareAppDescription'),
+      url,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        setShareStatus(getTranslation(lang, 'appShared'));
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareStatus(getTranslation(lang, 'appLinkCopied'));
+    } catch {
+      setShareStatus(`${getTranslation(lang, 'appLinkManual')} ${url}`);
     }
   };
 
@@ -325,6 +352,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>{getTranslation(lang, 'resetAppBtn')}</span>
               <RotateCcw className="w-4 h-4" />
             </motion.button>
+          </div>
+
+          <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+            <motion.button
+              type="button"
+              onClick={handleShareApp}
+              whileHover={buttonMotion.whileHover}
+              whileTap={buttonMotion.whileTap}
+              transition={buttonMotion.transition}
+              className="w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-left text-indigo-800 transition-colors hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-100 dark:hover:bg-indigo-950"
+            >
+              <span className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-950/20">
+                  <Share2 className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <span>
+                  <span className="block text-sm font-black">{getTranslation(lang, 'shareApp')}</span>
+                  <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                    {getTranslation(lang, 'shareAppDescription')}
+                  </span>
+                </span>
+              </span>
+            </motion.button>
+            {shareStatus && (
+              <p className="break-all rounded-lg bg-indigo-50 px-3 py-2 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300" role="status">
+                {shareStatus}
+              </p>
+            )}
           </div>
         </div>
 

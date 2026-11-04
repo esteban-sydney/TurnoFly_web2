@@ -33,11 +33,11 @@ html.dark {
 
 html.dark body,
 .dark body {
-  background-color: #080d19 !important;
+  background-color: #0b1020 !important;
   background-image:
-    radial-gradient(at 0% 0%, rgba(49, 46, 129, 0.24) 0px, transparent 42%),
-    radial-gradient(at 100% 0%, rgba(30, 41, 59, 0.42) 0px, transparent 40%),
-    linear-gradient(180deg, #0b1020 0%, #080d19 100%);
+    radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.2) 0px, transparent 44%),
+    radial-gradient(at 100% 4%, rgba(14, 116, 144, 0.12) 0px, transparent 38%),
+    linear-gradient(180deg, #0d1426 0%, #090e1a 100%);
   color: #f8fafc !important;
 }
 
@@ -57,17 +57,17 @@ html.dark body,
 }
 
 .dark .app-backdrop {
-  background-color: #080d19;
+  background-color: #0b1020;
   background-image:
-    radial-gradient(at 0% 0%, rgba(49, 46, 129, 0.24) 0px, transparent 42%),
-    radial-gradient(at 100% 0%, rgba(30, 41, 59, 0.42) 0px, transparent 40%),
-    linear-gradient(180deg, #0b1020 0%, #080d19 100%);
+    radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.2) 0px, transparent 44%),
+    radial-gradient(at 100% 4%, rgba(14, 116, 144, 0.12) 0px, transparent 38%),
+    linear-gradient(180deg, #0d1426 0%, #090e1a 100%);
 }
 
 .dark .app-surface {
-  border-color: rgba(51, 65, 85, 0.82);
-  background: rgba(15, 23, 42, 0.92);
-  box-shadow: 0 14px 36px -24px rgba(0, 0, 0, 0.8), 0 2px 8px -5px rgba(0, 0, 0, 0.55);
+  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(17, 25, 43, 0.96);
+  box-shadow: 0 18px 42px -28px rgba(0, 0, 0, 0.82), 0 2px 8px -5px rgba(0, 0, 0, 0.52);
 }
 
 .home-profile-card {
@@ -282,11 +282,11 @@ html.dark body,
 }
 
 .dark .glass-card {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(19, 29, 48, 0.94);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(30, 41, 59, 0.8);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(71, 85, 105, 0.68);
+  box-shadow: 0 18px 38px -12px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(99, 102, 241, 0.06);
 }
 
 .glass-nav {
@@ -297,10 +297,10 @@ html.dark body,
 }
 
 .dark .glass-nav {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(16, 26, 45, 0.94);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(30, 41, 59, 0.8);
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 /* Press micro-interactions */
@@ -321,6 +321,9 @@ button:not(:disabled):active, .clickable-card:active {
 
 .app-safe-header {
   padding-top: max(0.625rem, env(safe-area-inset-top));
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
 }
 
 .app-safe-nav {

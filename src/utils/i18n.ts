@@ -22,6 +22,11 @@ export const translations = {
     importExcelBtn: 'Importar Excel (.xlsx)',
     personalCalendarBtn: 'Calendario Personal',
     resetAppBtn: 'Restablecer App',
+    shareApp: 'Compartir TurnoFly',
+    shareAppDescription: 'Envía el enlace para que otras personas puedan iniciar sesión con su correo.',
+    appShared: 'Se abrió el menú para compartir.',
+    appLinkCopied: 'Enlace copiado. Ya puedes compartirlo.',
+    appLinkManual: 'Copia este enlace:',
     
     // Worker Stats
     summaryMonth: 'Resumen del Mes',
@@ -142,6 +147,11 @@ export const translations = {
     importExcelBtn: 'Import Excel (.xlsx)',
     personalCalendarBtn: 'Personal Calendar',
     resetAppBtn: 'Reset App',
+    shareApp: 'Share TurnoFly',
+    shareAppDescription: 'Send the link so others can sign in with their email.',
+    appShared: 'The sharing menu was opened.',
+    appLinkCopied: 'Link copied. It is ready to share.',
+    appLinkManual: 'Copy this link:',
     
     summaryMonth: 'Monthly Summary',
     totalHours: 'Total Hours',
@@ -252,6 +262,11 @@ export const translations = {
     importExcelBtn: 'Importar Excel (.xlsx)',
     personalCalendarBtn: 'Agenda Pessoal',
     resetAppBtn: 'Redefinir App',
+    shareApp: 'Compartilhar TurnoFly',
+    shareAppDescription: 'Envie o link para que outras pessoas entrem com o e-mail delas.',
+    appShared: 'O menu de compartilhamento foi aberto.',
+    appLinkCopied: 'Link copiado. Já pode ser compartilhado.',
+    appLinkManual: 'Copie este link:',
     
     summaryMonth: 'Resumo do Mês',
     totalHours: 'Horas Totais',
