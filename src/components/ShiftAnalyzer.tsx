@@ -630,31 +630,31 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
       {hasActiveWorkerData && assignedShiftSummaries.length > 0 && (
         <section
           aria-labelledby="assigned-shift-schedules-title"
-          className="app-surface mt-3 w-full max-w-full rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5"
+          className="app-surface mt-3 w-full max-w-full rounded-3xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4"
         >
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
-              <Clock className="h-4 w-4" aria-hidden="true" />
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
+              <Clock className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
             <div>
-              <h2 id="assigned-shift-schedules-title" className="text-sm font-black text-slate-900 dark:text-white">
+              <h2 id="assigned-shift-schedules-title" className="text-[13px] font-black leading-tight text-slate-900 dark:text-white">
                 {getTranslation(lang, 'assignedShiftSchedules')}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">
                 {getTranslation(lang, 'assignedShiftsIn')} {monthNames[activeMonth - 1]}
               </p>
             </div>
           </div>
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-3">
             {assignedShiftSummaries.map(({ code, definition, schedule }) => (
               <li
                 key={code}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50"
+                className="flex min-h-10 items-center justify-between gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/70 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/50"
               >
-                <span className={`inline-flex min-w-12 items-center justify-center rounded-xl border px-2.5 py-1.5 text-sm font-black ${definition.color}`}>
+                <span className={`inline-flex min-w-9 shrink-0 items-center justify-center rounded-lg border px-1.5 py-1 text-xs font-black ${definition.color}`}>
                   {code}
                 </span>
-                <span className={`text-right text-sm font-bold ${schedule === getTranslation(lang, 'schedulePending') ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                <span className={`text-right text-[11px] font-bold leading-tight ${schedule === getTranslation(lang, 'schedulePending') ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}`}>
                   {schedule}
                 </span>
               </li>
