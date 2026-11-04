@@ -85,32 +85,30 @@ export const AuthScreen: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center px-4 py-8 overflow-hidden relative">
+    <main className="auth-screen app-backdrop min-h-screen text-slate-900 dark:text-slate-100 flex items-center justify-center px-4 py-8 overflow-hidden relative">
       <motion.div
-        className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#4f46e5_0_25%,#fbbf24_25%_45%,#0f172a_45%_65%,#10b981_65%_82%,#0ea5e9_82%)]"
+        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-600 via-violet-500 to-cyan-400"
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
       />
 
       <motion.section
-        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70 overflow-hidden"
+        className="auth-card glass-card w-full max-w-md rounded-[1.75rem] overflow-hidden"
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
-        <div className="px-6 pt-7 pb-5 border-b border-slate-100">
+        <div className="px-6 pt-7 pb-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <motion.div
-              className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200"
-              animate={{ y: [0, -3, 0] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-cyan-500 text-white flex items-center justify-center shadow-lg shadow-indigo-300/50 dark:shadow-indigo-950/50"
             >
               <CalendarDays className="w-6 h-6" />
             </motion.div>
             <div>
-              <p className="text-[11px] font-extrabold uppercase text-indigo-600">Acceso seguro</p>
-              <h1 className="text-2xl font-black">Turno<span className="text-indigo-600">Fly</span></h1>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">Acceso seguro</p>
+              <h1 className="text-2xl font-black text-slate-950 dark:text-white">Turno<span className="text-indigo-600 dark:text-indigo-400">Fly</span></h1>
             </div>
           </div>
         </div>
@@ -126,12 +124,12 @@ export const AuthScreen: React.FC = () => {
                 className="space-y-5"
               >
                 <div>
-                  <h2 className="text-xl font-extrabold">Inicia sesión</h2>
-                  <p className="mt-1 text-sm text-slate-500">Recibirás un código de acceso en tu correo.</p>
+                  <h2 className="text-xl font-extrabold text-slate-950 dark:text-white">Inicia sesión</h2>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Recibirás un código de acceso en tu correo.</p>
                 </div>
 
                 <label className="block space-y-2">
-                  <span className="text-xs font-bold text-slate-700">Correo electrónico</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Correo electrónico</span>
                   <span className="relative block">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
                     <input
@@ -141,7 +139,7 @@ export const AuthScreen: React.FC = () => {
                       required
                       autoComplete="email"
                       placeholder="nombre@correo.com"
-                      className="w-full h-12 rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                      className="w-full h-12 rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:ring-indigo-950"
                     />
                   </span>
                 </label>
@@ -157,13 +155,13 @@ export const AuthScreen: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2 text-emerald-600">
                     <ShieldCheck className="w-5 h-5" />
-                    <h2 className="text-xl font-extrabold text-slate-900">Revisa tu correo</h2>
+                    <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Revisa tu correo</h2>
                   </div>
-                  <p className="mt-2 text-sm text-slate-500 break-all">Enviamos el código a {email}.</p>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 break-all">Enviamos el código a {email}.</p>
                 </div>
 
                 <label className="block space-y-2">
-                  <span className="text-xs font-bold text-slate-700">Código de acceso</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Código de acceso</span>
                   <input
                     type="text"
                     value={code}
@@ -175,7 +173,7 @@ export const AuthScreen: React.FC = () => {
                     maxLength={10}
                     autoFocus
                     placeholder="000000"
-                    className="w-full h-14 rounded-xl border border-slate-300 bg-slate-50 px-4 text-center text-2xl font-black outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    className="w-full h-14 rounded-xl border border-slate-300 bg-slate-50 px-4 text-center text-2xl font-black text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:bg-slate-800 dark:focus:ring-indigo-950"
                   />
                 </label>
 
@@ -183,7 +181,7 @@ export const AuthScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={editEmail}
-                    className="inline-flex items-center gap-1.5 font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 font-bold text-slate-600 hover:text-indigo-700 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     Cambiar correo
@@ -192,7 +190,7 @@ export const AuthScreen: React.FC = () => {
                     type="button"
                     onClick={() => void requestCode()}
                     disabled={secondsUntilResend > 0 || isSubmitting}
-                    className="font-bold text-indigo-600 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer"
+                    className="font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {secondsUntilResend > 0 ? `Reenviar en ${secondsUntilResend}s` : 'Reenviar código'}
                   </button>
@@ -202,7 +200,7 @@ export const AuthScreen: React.FC = () => {
           </AnimatePresence>
 
           {!isConfigured && (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
+            <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
               Falta configurar la conexión pública de Supabase.
             </p>
           )}
@@ -212,7 +210,7 @@ export const AuthScreen: React.FC = () => {
               role="alert"
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700"
+              className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200"
             >
               {error}
             </motion.p>
@@ -221,7 +219,7 @@ export const AuthScreen: React.FC = () => {
           <motion.button
             type="submit"
             disabled={isSubmitting || !isConfigured || (codeSent && code.length < 6)}
-            className="w-full h-12 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 transition hover:bg-indigo-500 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
+            className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-indigo-300/50 transition hover:from-indigo-500 hover:to-violet-500 disabled:bg-slate-300 disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none disabled:cursor-not-allowed cursor-pointer dark:shadow-indigo-950/50 dark:disabled:from-slate-700 dark:disabled:to-slate-700"
             whileHover={!isSubmitting ? buttonMotion.whileHover : undefined}
             whileTap={!isSubmitting ? buttonMotion.whileTap : undefined}
             transition={buttonMotion.transition}

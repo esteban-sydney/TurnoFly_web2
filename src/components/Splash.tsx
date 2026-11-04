@@ -9,11 +9,11 @@ interface SplashProps {
 }
 
 const shiftTiles = [
-  { day: 'Lun', code: 'M', tone: 'bg-indigo-600 text-white border-indigo-500', origin: { x: 160, y: 250, rotate: 150 } },
-  { day: 'Mar', code: 'T', tone: 'bg-amber-400 text-amber-950 border-amber-300', origin: { x: -120, y: 180, rotate: -120 } },
-  { day: 'Mié', code: 'N', tone: 'bg-slate-800 text-white border-slate-700', origin: { x: 0, y: 280, rotate: 180 } },
+  { day: 'Lun', code: 'M', tone: 'bg-amber-400 text-amber-950 border-amber-300', origin: { x: 160, y: 250, rotate: 150 } },
+  { day: 'Mar', code: 'T', tone: 'bg-orange-400 text-orange-950 border-orange-300', origin: { x: -120, y: 180, rotate: -120 } },
+  { day: 'Mié', code: 'N', tone: 'bg-violet-600 text-white border-violet-500', origin: { x: 0, y: 280, rotate: 180 } },
   { day: 'Jue', code: 'L', tone: 'bg-emerald-500 text-white border-emerald-400', origin: { x: 130, y: -100, rotate: 110 } },
-  { day: 'Vie', code: 'A', tone: 'bg-sky-500 text-white border-sky-400', origin: { x: -170, y: -80, rotate: -150 } },
+  { day: 'Vie', code: 'A', tone: 'bg-sky-600 text-white border-sky-500', origin: { x: -170, y: -80, rotate: -150 } },
 ];
 
 const brandOrigins = [
@@ -35,7 +35,7 @@ export const Splash: React.FC<SplashProps> = ({ onFinish }) => {
 
   return (
     <div
-      className="relative min-h-[100svh] w-full overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-950 dark:text-white select-none"
+      className="app-backdrop relative min-h-[100svh] w-full overflow-hidden text-slate-950 dark:text-white select-none"
       role="status"
       aria-live="polite"
       aria-label="Cargando TurnoFly"
@@ -130,7 +130,7 @@ export const Splash: React.FC<SplashProps> = ({ onFinish }) => {
       <div className="absolute inset-0 flex items-center justify-center px-5 pt-20">
         <div className="flex flex-col items-center text-center">
           <motion.div
-            className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-indigo-950/40"
+            className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-cyan-500 text-white shadow-xl shadow-indigo-300/60 dark:shadow-indigo-950/50"
             initial={reduceMotion ? false : { opacity: 0, scale: 0.15, rotate: -160 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
             transition={{ delay: reduceMotion ? 0 : 0.82, type: 'spring', stiffness: 180, damping: 14 }}
@@ -178,7 +178,7 @@ export const Splash: React.FC<SplashProps> = ({ onFinish }) => {
 
           <div className="mt-8 h-1 w-44 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
             <motion.div
-              className="h-full origin-left rounded-full bg-indigo-600"
+              className="h-full origin-left rounded-full bg-gradient-to-r from-indigo-600 to-cyan-400"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ delay: reduceMotion ? 0 : 0.25, duration: reduceMotion ? 0.6 : 4.25, ease: 'easeInOut' }}

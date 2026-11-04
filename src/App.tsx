@@ -312,12 +312,12 @@ function AppMain() {
           transition={buttonMotion.transition}
           className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all cursor-pointer ${
             activeView === 'home'
-              ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
+              ? 'app-nav-current text-indigo-700 dark:text-indigo-200 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Home className="w-5 h-5" />
-          <span className="text-[10px] uppercase tracking-wider">Inicio</span>
+          <span className="text-[10px] font-bold tracking-wide">Inicio</span>
         </motion.button>
 
         <motion.button
@@ -327,12 +327,12 @@ function AppMain() {
           transition={buttonMotion.transition}
           className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all cursor-pointer ${
             activeView === 'shifts'
-              ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
+              ? 'app-nav-current text-indigo-700 dark:text-indigo-200 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Calendar className="w-5 h-5" />
-          <span className="text-[10px] uppercase tracking-wider">Mis Turnos</span>
+          <span className="text-[10px] font-bold tracking-wide">Mis Turnos</span>
         </motion.button>
 
         <motion.button
@@ -342,12 +342,12 @@ function AppMain() {
           transition={buttonMotion.transition}
           className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all cursor-pointer relative ${
             activeView === 'personal'
-              ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
+              ? 'app-nav-current text-indigo-700 dark:text-indigo-200 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Clock className="w-5 h-5" />
-          <span className="text-[10px] uppercase tracking-wider">Agenda</span>
+          <span className="text-[10px] font-bold tracking-wide">Agenda</span>
         </motion.button>
 
         <motion.button
@@ -358,14 +358,14 @@ function AppMain() {
           transition={buttonMotion.transition}
           className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all ${
             activeView === 'supervisor'
-              ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
+              ? 'app-nav-current text-indigo-700 dark:text-indigo-200 font-extrabold bg-indigo-50 dark:bg-indigo-950/80 shadow-xs'
               : canOpenSupervisor
               ? 'text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-900 dark:hover:text-white'
               : 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-70'
           }`}
         >
           <Users className="w-5 h-5" />
-          <span className="text-[10px] uppercase tracking-wider">Jefatura</span>
+          <span className="text-[10px] font-bold tracking-wide">Jefatura</span>
         </motion.button>
       </nav>
 

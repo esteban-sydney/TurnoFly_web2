@@ -1,6 +1,6 @@
 export const buttonMotion = {
-  whileHover: { scale: 1.04, y: -1 },
-  whileTap: { scale: 0.96, y: 0 },
+  whileHover: { scale: 1.02, y: -1 },
+  whileTap: { scale: 0.985, y: 0 },
   transition: { type: 'spring' as const, stiffness: 260, damping: 24 },
 };
 

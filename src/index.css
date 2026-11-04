@@ -11,11 +11,11 @@
   }
   body {
     min-height: 100dvh;
-    background-color: #f6f7fb;
+    background-color: #f5f7fc;
     background-image:
-      radial-gradient(at 0% 0%, rgba(224, 231, 255, 0.48) 0px, transparent 42%),
-      radial-gradient(at 100% 8%, rgba(238, 242, 255, 0.58) 0px, transparent 38%),
-      linear-gradient(180deg, #f8faff 0%, #f3f5f9 100%);
+      radial-gradient(at 0% 0%, rgba(224, 231, 255, 0.56) 0px, transparent 42%),
+      radial-gradient(at 100% 8%, rgba(207, 250, 254, 0.24) 0px, transparent 38%),
+      linear-gradient(180deg, #f9faff 0%, #f2f5fa 100%);
     background-attachment: fixed;
     color: #0f172a;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -42,18 +42,18 @@ html.dark body,
 }
 
 .app-surface {
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 12px 32px -24px rgba(15, 23, 42, 0.36), 0 2px 6px -3px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(219, 226, 239, 0.94);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.99), rgba(250, 251, 255, 0.97));
+  box-shadow: 0 16px 36px -28px rgba(30, 41, 59, 0.38), 0 3px 10px -7px rgba(79, 70, 229, 0.16);
   transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
 
 .app-backdrop {
-  background-color: #f6f7fb;
+  background-color: #f5f7fc;
   background-image:
-    radial-gradient(at 0% 0%, rgba(224, 231, 255, 0.48) 0px, transparent 42%),
-    radial-gradient(at 100% 8%, rgba(238, 242, 255, 0.58) 0px, transparent 38%),
-    linear-gradient(180deg, #f8faff 0%, #f3f5f9 100%);
+    radial-gradient(at 0% 0%, rgba(224, 231, 255, 0.56) 0px, transparent 42%),
+    radial-gradient(at 100% 8%, rgba(207, 250, 254, 0.24) 0px, transparent 38%),
+    linear-gradient(180deg, #f9faff 0%, #f2f5fa 100%);
 }
 
 .dark .app-backdrop {
@@ -65,9 +65,9 @@ html.dark body,
 }
 
 .dark .app-surface {
-  border-color: rgba(99, 102, 241, 0.2);
-  background: rgba(17, 25, 43, 0.96);
-  box-shadow: 0 18px 42px -28px rgba(0, 0, 0, 0.82), 0 2px 8px -5px rgba(0, 0, 0, 0.52);
+  border-color: rgba(100, 116, 139, 0.38);
+  background: linear-gradient(155deg, rgba(22, 33, 55, 0.98), rgba(15, 24, 41, 0.98));
+  box-shadow: 0 20px 44px -30px rgba(0, 0, 0, 0.86), 0 3px 12px -7px rgba(79, 70, 229, 0.2);
 }
 
 .home-profile-card {
@@ -77,12 +77,12 @@ html.dark body,
 }
 
 .home-empty-hero {
-  background: linear-gradient(118deg, #4338ca 0%, #4f46e5 48%, #6d5ce8 100%);
+  background: linear-gradient(118deg, #3730a3 0%, #4f46e5 52%, #0f766e 125%);
   box-shadow: 0 26px 60px -32px rgba(79, 70, 229, 0.56), 0 8px 20px -12px rgba(49, 46, 129, 0.3);
 }
 
 .home-supervisor-hero {
-  background: linear-gradient(118deg, #3730a3 0%, #4f46e5 48%, #6d5ce8 100%);
+  background: linear-gradient(118deg, #312e81 0%, #4f46e5 52%, #0f766e 125%);
   box-shadow: 0 26px 60px -32px rgba(79, 70, 229, 0.5), 0 8px 20px -12px rgba(49, 46, 129, 0.3);
 }
 
@@ -155,9 +155,9 @@ html.dark body,
 }
 
 .dark .home-profile-card {
-  border-color: rgba(99, 102, 241, 0.24);
-  background: linear-gradient(128deg, #0f172a 0%, #11182d 58%, #171b3a 100%);
-  box-shadow: 0 24px 60px -42px rgba(99, 102, 241, 0.3), 0 8px 22px -16px rgba(0, 0, 0, 0.55);
+  border-color: rgba(129, 140, 248, 0.28);
+  background: linear-gradient(128deg, #121d32 0%, #17223b 58%, #202147 100%);
+  box-shadow: 0 26px 64px -42px rgba(79, 70, 229, 0.42), 0 8px 22px -16px rgba(0, 0, 0, 0.6);
 }
 
 .home-management-card {
@@ -184,8 +184,8 @@ html.dark body,
 }
 
 .dark .home-management-card {
-  border-color: rgba(51, 65, 85, 0.86);
-  box-shadow: 0 16px 34px -25px rgba(0, 0, 0, 0.82);
+  border-color: rgba(100, 116, 139, 0.38);
+  box-shadow: 0 18px 38px -26px rgba(0, 0, 0, 0.86), 0 2px 10px -7px rgba(99, 102, 241, 0.18);
 }
 
 .dark .home-management-card:hover {
@@ -236,8 +236,8 @@ html.dark body,
 .home-metric-card:nth-child(4) { --metric-glow: rgba(14, 165, 233, 0.12); --metric-accent: linear-gradient(90deg, #0ea5e9, #38bdf8); --metric-border: rgba(125, 211, 252, 0.9); }
 
 .dark .home-metric-card {
-  border-color: rgba(51, 65, 85, 0.86);
-  box-shadow: 0 16px 36px -27px rgba(0, 0, 0, 0.78);
+  border-color: rgba(100, 116, 139, 0.38);
+  box-shadow: 0 18px 40px -28px rgba(0, 0, 0, 0.82), 0 2px 10px -8px rgba(99, 102, 241, 0.16);
 }
 
 .dark .home-metric-card:hover {
@@ -252,7 +252,7 @@ html.dark body,
 }
 
 .dark * {
-  scrollbar-color: #475569 transparent;
+  scrollbar-color: #536785 transparent;
 }
 
 ::-webkit-scrollbar {
@@ -274,33 +274,80 @@ html.dark body,
 
 /* Glassmorphism & Interactive Button Utilities */
 .glass-card {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 10px 30px -5px rgba(148, 163, 184, 0.25), 0 4px 12px -2px rgba(148, 163, 184, 0.15);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(219, 226, 239, 0.95);
+  box-shadow: 0 20px 50px -24px rgba(15, 23, 42, 0.3), 0 5px 14px -8px rgba(79, 70, 229, 0.14);
 }
 
 .dark .glass-card {
-  background: rgba(19, 29, 48, 0.94);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(71, 85, 105, 0.68);
-  box-shadow: 0 18px 38px -12px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(99, 102, 241, 0.06);
+  background: linear-gradient(155deg, rgba(22, 33, 55, 0.99), rgba(15, 24, 41, 0.99));
+  border: 1px solid rgba(100, 116, 139, 0.42);
+  box-shadow: 0 24px 58px -20px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(99, 102, 241, 0.08);
 }
 
 .glass-nav {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(226, 232, 240, 0.8);
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid rgba(203, 213, 225, 0.82);
+  box-shadow: 0 -14px 32px -28px rgba(30, 41, 59, 0.28);
 }
 
 .dark .glass-nav {
-  background: rgba(16, 26, 45, 0.94);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(13, 21, 37, 0.99);
+  border-top: 1px solid rgba(100, 116, 139, 0.38);
+  box-shadow: 0 -16px 36px -26px rgba(0, 0, 0, 0.88);
+}
+
+.auth-card {
+  border-color: rgba(199, 210, 254, 0.68);
+  box-shadow: 0 28px 70px -38px rgba(49, 46, 129, 0.32), 0 10px 28px -18px rgba(15, 23, 42, 0.18);
+}
+
+.dark .auth-card {
+  border-color: rgba(100, 116, 139, 0.42);
+  box-shadow: 0 28px 70px -38px rgba(0, 0, 0, 0.82), 0 0 0 1px rgba(99, 102, 241, 0.1);
+}
+
+.app-safe-nav > button {
+  min-width: 4rem;
+  min-height: 3.1rem;
+}
+
+.app-nav-current {
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  background: linear-gradient(145deg, #eef2ff, #f5f3ff) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 5px 14px -10px rgba(79, 70, 229, 0.54);
+}
+
+.app-nav-current svg {
+  color: #4f46e5;
+}
+
+.dark .app-nav-current {
+  border-color: rgba(129, 140, 248, 0.26);
+  background: linear-gradient(145deg, rgba(79, 70, 229, 0.24), rgba(14, 116, 144, 0.12)) !important;
+  box-shadow: inset 0 1px 0 rgba(165, 180, 252, 0.08), 0 6px 16px -11px rgba(79, 70, 229, 0.6);
+}
+
+.dark .app-nav-current svg {
+  color: #a5b4fc;
+}
+
+input,
+select,
+textarea {
+  accent-color: #6366f1;
+}
+
+input:not(:disabled),
+select:not(:disabled),
+textarea:not(:disabled) {
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  accent-color: #818cf8;
 }
 
 /* Press micro-interactions */
@@ -311,7 +358,7 @@ button, .clickable-card {
 }
 
 button:not(:disabled):active, .clickable-card:active {
-  transform: scale(0.96);
+  transform: scale(0.985);
 }
 
 :where(button, [role="button"], a, input, select, textarea):focus-visible {
@@ -321,9 +368,16 @@ button:not(:disabled):active, .clickable-card:active {
 
 .app-safe-header {
   padding-top: max(0.625rem, env(safe-area-inset-top));
+  background-color: #ffffff;
+  box-shadow: 0 8px 26px -24px rgba(15, 23, 42, 0.48);
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   filter: none !important;
+}
+
+.dark .app-safe-header {
+  background-color: #0f192b;
+  box-shadow: 0 8px 26px -22px rgba(0, 0, 0, 0.78);
 }
 
 .app-safe-nav {
