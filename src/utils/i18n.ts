@@ -57,6 +57,10 @@ export const translations = {
     
     // Shift Analyzer
     shiftAnalyzerTitle: 'Analizador de Turnos',
+    assignedShiftSchedules: 'Mis horarios',
+    assignedShiftsIn: 'Turnos asignados en',
+    schedulePending: 'Horario pendiente',
+    dayOff: 'Día libre',
     editShiftTitle: 'Editar Turno del Día',
     shiftCodeLabel: 'Código de Turno',
     categoryLabel: 'Categoría',
@@ -169,6 +173,10 @@ export const translations = {
     downloadSampleFile: 'Download Sample Sheet (.xlsx)',
     
     shiftAnalyzerTitle: 'Shift Analyzer',
+    assignedShiftSchedules: 'My schedules',
+    assignedShiftsIn: 'Shifts assigned in',
+    schedulePending: 'Schedule pending',
+    dayOff: 'Day off',
     editShiftTitle: 'Edit Daily Shift',
     shiftCodeLabel: 'Shift Code',
     categoryLabel: 'Category',
@@ -275,6 +283,10 @@ export const translations = {
     downloadSampleFile: 'Baixar Planilha Exemplo (.xlsx)',
     
     shiftAnalyzerTitle: 'Analisador de Turnos',
+    assignedShiftSchedules: 'Meus horários',
+    assignedShiftsIn: 'Turnos atribuídos em',
+    schedulePending: 'Horário pendente',
+    dayOff: 'Dia de folga',
     editShiftTitle: 'Editar Turno do Dia',
     shiftCodeLabel: 'Código do Turno',
     categoryLabel: 'Categoria',

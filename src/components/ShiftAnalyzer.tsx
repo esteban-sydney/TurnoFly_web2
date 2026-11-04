@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import html2canvas from 'html2canvas';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
@@ -122,6 +122,34 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
   const hasActiveWorkerData = Object.keys(activeWorker?.shifts || {}).some((date) =>
     date.startsWith(activePeriodPrefix)
   );
+
+  const assignedShiftSummaries = useMemo(() => {
+    const shiftsForPeriod = Object.entries(activeWorker?.shifts || {}).filter(
+      ([date, shift]) => date.startsWith(activePeriodPrefix) && shift?.rawCode?.trim()
+    );
+    const codes = [...new Set(shiftsForPeriod.map(([, shift]) => shift.rawCode.trim().toUpperCase()))]
+      .sort((left, right) => left.localeCompare(right, lang));
+
+    return codes.map((code) => {
+      const definition = categorizeCode(code, shiftDefinitions);
+      const shiftsForCode = shiftsForPeriod
+        .filter(([, shift]) => shift.rawCode.trim().toUpperCase() === code)
+        .map(([, shift]) => shift);
+      const availableHours = shiftsForCode.find((shift) => shift.startTime || shift.endTime);
+      const startTime = definition.defaultStartTime || availableHours?.startTime || '';
+      const endTime = definition.defaultEndTime || availableHours?.endTime || '';
+
+      return {
+        code,
+        definition,
+        schedule: !definition.isWorkDay
+          ? getTranslation(lang, 'dayOff')
+          : startTime && endTime
+            ? `${startTime} – ${endTime}`
+            : getTranslation(lang, 'schedulePending'),
+      };
+    });
+  }, [activeWorker?.shifts, activePeriodPrefix, shiftDefinitions, lang]);
 
   const goToPeriod = (year: number, month: number) => {
     const periodPrefix = `${year}-${String(month).padStart(2, '0')}-`;
@@ -598,6 +626,42 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
             )}
         </div>
       </div>
+
+      {hasActiveWorkerData && assignedShiftSummaries.length > 0 && (
+        <section
+          aria-labelledby="assigned-shift-schedules-title"
+          className="app-surface mt-3 w-full max-w-full rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5"
+        >
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
+              <Clock className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 id="assigned-shift-schedules-title" className="text-sm font-black text-slate-900 dark:text-white">
+                {getTranslation(lang, 'assignedShiftSchedules')}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {getTranslation(lang, 'assignedShiftsIn')} {monthNames[activeMonth - 1]}
+              </p>
+            </div>
+          </div>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {assignedShiftSummaries.map(({ code, definition, schedule }) => (
+              <li
+                key={code}
+                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50"
+              >
+                <span className={`inline-flex min-w-12 items-center justify-center rounded-xl border px-2.5 py-1.5 text-sm font-black ${definition.color}`}>
+                  {code}
+                </span>
+                <span className={`text-right text-sm font-bold ${schedule === getTranslation(lang, 'schedulePending') ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                  {schedule}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
 
 
