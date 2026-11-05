@@ -85,7 +85,17 @@ export async function saveSubscription(
     }, { onConflict: 'endpoint' })
     .select('id')
     .single();
-  if (error || !data?.id) throw new Error('No se pudo guardar la suscripción del dispositivo.');
+  if (error) {
+    // Log only Postgres/PostgREST codes; messages and details can contain a device endpoint.
+    console.error('[shift-push] No se pudo guardar la suscripción.', {
+      code: error.code || 'unknown',
+    });
+    throw new Error('No se pudo guardar la suscripción del dispositivo.');
+  }
+  if (!data?.id) {
+    console.error('[shift-push] El guardado no devolvió un ID de suscripción.');
+    throw new Error('No se pudo guardar la suscripción del dispositivo.');
+  }
   return data.id as string;
 }
 
