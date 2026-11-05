@@ -1,4 +1,4 @@
-import { configureWebPush, json } from '../../src/server/shiftPush';
+import { configureWebPush, json } from '../../src/server/shiftPush.js';
 
 export function GET(): Response {
   try {

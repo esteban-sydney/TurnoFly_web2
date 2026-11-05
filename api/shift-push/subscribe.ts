@@ -1,4 +1,4 @@
-import { authenticateRequest, isResponse, json, parseSubscription, saveSubscription } from '../../src/server/shiftPush';
+import { authenticateRequest, isResponse, json, parseSubscription, saveSubscription } from '../../src/server/shiftPush.js';
 
 export async function POST(request: Request): Promise<Response> {
   const context = await authenticateRequest(request);

@@ -1,4 +1,4 @@
-import { authenticateRequest, isResponse, json, parseSubscription, saveSubscription } from '../../src/server/shiftPush';
+import { authenticateRequest, isResponse, json, parseSubscription, saveSubscription } from '../../src/server/shiftPush.js';
 
 interface ReminderInput {
   id: string;

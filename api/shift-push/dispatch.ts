@@ -4,7 +4,7 @@ import {
   createAdminClient,
   isCronRequestAuthorized,
   json,
-} from '../../src/server/shiftPush';
+} from '../../src/server/shiftPush.js';
 
 interface DueReminder {
   id: string;
