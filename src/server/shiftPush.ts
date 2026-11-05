@@ -86,9 +86,20 @@ export async function saveSubscription(
     .select('id')
     .single();
   if (error) {
-    // Log only Postgres/PostgREST codes; messages and details can contain a device endpoint.
+    // Classify the failure without logging messages that may contain a device endpoint.
+    const message = error.message.toLowerCase();
+    const reason = message.includes('row-level security') || message.includes('row level security')
+      ? 'row_level_security'
+      : message.includes('permission denied for table')
+        ? 'table_permission_denied'
+        : message.includes('permission denied for schema')
+          ? 'schema_permission_denied'
+          : message.includes('permission denied for function')
+            ? 'function_permission_denied'
+            : 'other_postgrest_error';
     console.error('[shift-push] No se pudo guardar la suscripción.', {
       code: error.code || 'unknown',
+      reason,
     });
     throw new Error('No se pudo guardar la suscripción del dispositivo.');
   }
