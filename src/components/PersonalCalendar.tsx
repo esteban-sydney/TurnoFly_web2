@@ -402,7 +402,7 @@ export const PersonalCalendar: React.FC<PersonalCalendarProps> = ({
       </div>
 
       {/* Main Calendar Container */}
-      <div className="p-3 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 w-full max-w-full overflow-x-hidden">
+      <div className="app-surface p-3 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 w-full max-w-full overflow-x-hidden">
         <div>
           <p className="text-[10px] font-bold text-center text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
             💡 Toca un día para agregar una cita personal

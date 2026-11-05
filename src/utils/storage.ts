@@ -204,6 +204,7 @@ export const defaultSettings: AppSettings = {
   activeView: 'home',
   hasSeenSplash: false,
   remindersEnabled: true,
+  shiftRemindersEnabled: false,
   defaultRemoteMode: true,
   dismissedConflicts: [],
   shiftImports: [],
@@ -242,6 +243,10 @@ const sanitizeSettings = (value: unknown): AppSettings | null => {
   if (value.remindersEnabled !== undefined) {
     if (typeof value.remindersEnabled !== 'boolean') return null;
     settings.remindersEnabled = value.remindersEnabled;
+  }
+  if (value.shiftRemindersEnabled !== undefined) {
+    if (typeof value.shiftRemindersEnabled !== 'boolean') return null;
+    settings.shiftRemindersEnabled = value.shiftRemindersEnabled;
   }
   if (value.defaultRemoteMode !== undefined) {
     if (typeof value.defaultRemoteMode !== 'boolean') return null;

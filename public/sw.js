@@ -1,4 +1,5 @@
 const CACHE_NAME = 'turnofly-v2';
+const IS_LOCAL_DEV = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -11,11 +12,18 @@ const APP_SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  if (!IS_LOCAL_DEV) {
+    event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  }
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
+  if (IS_LOCAL_DEV) {
+    event.waitUntil(self.clients.claim());
+    return;
+  }
+
   event.waitUntil(
     caches
       .keys()
@@ -27,6 +35,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  if (IS_LOCAL_DEV) return;
+
   const { request } = event;
   if (request.method !== 'GET') return;
 
@@ -60,4 +70,28 @@ self.addEventListener('fetch', (event) => {
       });
     })
   );
+});
+
+self.addEventListener('push', (event) => {
+  let message = {};
+  try {
+    message = event.data?.json() || {};
+  } catch {
+    message = { body: event.data?.text() || '' };
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(message.title || 'TurnoFly', {
+      body: message.body || 'Tienes un recordatorio de turno.',
+      icon: message.icon || '/icons/turnofly-192.png',
+      badge: message.badge || '/icons/turnofly-32.png',
+      tag: message.tag || 'turnofly-shift-reminder',
+      vibrate: message.vibrate || [180, 90, 180],
+      data: { url: '/' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
 });

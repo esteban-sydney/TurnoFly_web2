@@ -120,6 +120,7 @@ export interface AppSettings {
   activeView?: 'home' | 'shifts' | 'personal' | 'supervisor';
   hasSeenSplash?: boolean;
   remindersEnabled: boolean;
+  shiftRemindersEnabled: boolean;
   defaultRemoteMode: boolean;
   dismissedConflicts: string[]; // event IDs
   referenceMonth?: number;

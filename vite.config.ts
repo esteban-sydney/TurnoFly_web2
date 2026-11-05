@@ -17,6 +17,14 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Quick Tunnel gives a temporary *.trycloudflare.com hostname for phone testing.
+      allowedHosts: ['.trycloudflare.com'],
+      proxy: {
+        '/__local-push': {
+          target: `http://127.0.0.1:${process.env.TURNOFLY_LOCAL_PUSH_PORT || '3101'}`,
+          changeOrigin: false,
+        },
+      },
     },
   };
 });

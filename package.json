@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev:push": "node ./scripts/localPushServer.mjs",
+    "setup:push-local": "node ./scripts/setupLocalPush.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "node ./scripts/clean.js",
@@ -30,6 +32,7 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "web-push": "^3.6.7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {

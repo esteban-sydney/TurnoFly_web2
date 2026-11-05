@@ -15,12 +15,15 @@ import {
   PlusSquare,
   CheckCircle2,
   Clock3,
+  BellRing,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { getTranslation } from '../utils/i18n';
 import { buttonMotion } from '../utils/motionVariants';
 import { usePwaInstall } from '../hooks/usePwaInstall';
 import { ShiftDefinitionsModal } from './ShiftDefinitionsModal';
+import { enableShiftPush, sendShiftPushTest } from '../utils/shiftPush';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -39,17 +42,81 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     settings,
     setLanguage,
     setTheme,
+    setShiftRemindersEnabled,
+    activeWorker,
     exportBackup,
     importBackup,
   } = useApp();
+  const { user } = useAuth();
 
   const lang = settings.language;
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [installStatus, setInstallStatus] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [shiftReminderStatus, setShiftReminderStatus] = useState<string | null>(null);
+  const [isConfiguringShiftReminders, setIsConfiguringShiftReminders] = useState(false);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [showShiftDefinitions, setShowShiftDefinitions] = useState(false);
   const { canInstall, install, isInstalled, isIos, isSecureContext } = usePwaInstall();
+
+  const handleShiftReminderToggle = async () => {
+    if (settings.shiftRemindersEnabled) {
+      setShiftRemindersEnabled(false);
+      setShiftReminderStatus(getTranslation(lang, 'shiftReminderInactive'));
+      return;
+    }
+
+    if (!user?.id || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setShiftReminderStatus(getTranslation(lang, 'shiftReminderUnsupported'));
+      return;
+    }
+
+    setIsConfiguringShiftReminders(true);
+    setShiftReminderStatus(null);
+    try {
+      const permission = Notification.permission === 'granted'
+        ? 'granted'
+        : await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setShiftReminderStatus(getTranslation(lang, 'shiftReminderPermissionDenied'));
+        return;
+      }
+
+      await enableShiftPush(user.id);
+      setShiftRemindersEnabled(true);
+      setShiftReminderStatus(
+        (getTranslation(lang, 'shiftReminderActive') as string).replace(
+          '{name}',
+          activeWorker?.name || 'profesional seleccionado'
+        )
+      );
+    } catch (error) {
+      setShiftReminderStatus(
+        error instanceof Error && error.message
+          ? error.message
+          : getTranslation(lang, 'shiftReminderSetupError')
+      );
+    } finally {
+      setIsConfiguringShiftReminders(false);
+    }
+  };
+
+  const handleTestShiftReminder = async () => {
+    if (!user?.id) return;
+    setIsConfiguringShiftReminders(true);
+    try {
+      await sendShiftPushTest(user.id);
+      setShiftReminderStatus(getTranslation(lang, 'shiftReminderTestSent'));
+    } catch (error) {
+      setShiftReminderStatus(
+        error instanceof Error && error.message
+          ? error.message
+          : getTranslation(lang, 'shiftReminderSetupError')
+      );
+    } finally {
+      setIsConfiguringShiftReminders(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -192,6 +259,58 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
           </div>
+
+          <section className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-800 dark:bg-indigo-950/30">
+            <div className="flex items-start gap-2.5">
+              <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  {getTranslation(lang, 'shiftReminderTitle')}
+                </h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                  {getTranslation(lang, 'shiftReminderDescription')}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleShiftReminderToggle()}
+              disabled={isConfiguringShiftReminders}
+              aria-pressed={settings.shiftRemindersEnabled}
+              className={`flex min-h-10 w-full items-center justify-between rounded-xl border px-3 text-xs font-black transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                settings.shiftRemindersEnabled
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+                  : 'border-indigo-200 bg-white text-indigo-800 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-200 dark:hover:bg-indigo-950/50'
+              }`}
+            >
+              <span>
+                {isConfiguringShiftReminders
+                  ? 'Configurando…'
+                  : getTranslation(lang, settings.shiftRemindersEnabled ? 'shiftReminderDisable' : 'shiftReminderEnable')}
+              </span>
+              <span className={`relative h-5 w-9 rounded-full transition-colors ${settings.shiftRemindersEnabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} aria-hidden="true">
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${settings.shiftRemindersEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </span>
+            </button>
+            {settings.shiftRemindersEnabled && (
+              <button
+                type="button"
+                onClick={() => void handleTestShiftReminder()}
+                disabled={isConfiguringShiftReminders}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                {getTranslation(lang, 'shiftReminderTest')}
+              </button>
+            )}
+            <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+              {getTranslation(lang, 'shiftReminderLocalHelp')}
+            </p>
+            {shiftReminderStatus && (
+              <p className="break-words text-[11px] font-semibold text-indigo-700 dark:text-indigo-300" role="status">
+                {shiftReminderStatus}
+              </p>
+            )}
+          </section>
 
           {/* Language Section */}
           <div className="space-y-2">

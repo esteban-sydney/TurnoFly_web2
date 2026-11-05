@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { getTranslation } from './utils/i18n';
 import { buttonMotion } from './utils/motionVariants';
+import { syncShiftPushSchedule } from './utils/shiftPush';
 
 const ShiftAnalyzer = lazy(() =>
   import('./components/ShiftAnalyzer').then((module) => ({ default: module.ShiftAnalyzer }))
@@ -62,7 +63,7 @@ function ModuleLoadingOverlay() {
 }
 
 function AppMain() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const {
     settings,
     clearShiftsOnly,
@@ -76,6 +77,7 @@ function AppMain() {
     setLastActiveView,
     setActiveWorkerId,
     activeWorker,
+    shiftDefinitions,
     cloudSyncStatus,
     unassignedEventCount,
     assignUnassignedEvents,
@@ -173,6 +175,22 @@ function AppMain() {
     if (workers.some((worker) => worker.id === legacyAssignmentWorkerId)) return;
     setLegacyAssignmentWorkerId(activeWorker?.id || workers[0].id);
   }, [activeWorker?.id, legacyAssignmentWorkerId, unassignedEventCount, workers]);
+
+  useEffect(() => {
+    if (!user?.id || cloudSyncStatus === 'loading') return;
+
+    void syncShiftPushSchedule(
+      user.id,
+      activeWorker,
+      shiftDefinitions,
+      settings.language,
+      settings.shiftRemindersEnabled
+    ).catch((error: unknown) => {
+      if (settings.shiftRemindersEnabled) {
+        console.warn('Shift reminder sync failed:', error instanceof Error ? error.message : 'unknown error');
+      }
+    });
+  }, [activeWorker, cloudSyncStatus, settings.language, settings.shiftRemindersEnabled, shiftDefinitions, user?.id]);
 
   const handleResetFullApp = () => {
     resetFullApp();

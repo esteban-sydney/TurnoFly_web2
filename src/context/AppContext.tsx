@@ -62,6 +62,7 @@ interface AppContextType {
   // Actions
   setLanguage: (lang: Language) => void;
   setTheme: (theme: ThemeMode) => void;
+  setShiftRemindersEnabled: (enabled: boolean) => void;
   setUserRole: (role: UserRole) => void;
   setActiveWorkerId: (id: string | undefined) => void;
   setActiveYearMonth: (year: number, month: number) => void;
@@ -396,6 +397,10 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
 
   const setTheme = (theme: ThemeMode) => {
     setSettings((prev) => ({ ...prev, theme }));
+  };
+
+  const setShiftRemindersEnabled = (enabled: boolean) => {
+    setSettings((prev) => ({ ...prev, shiftRemindersEnabled: enabled }));
   };
 
   const setUserRole = (role: UserRole) => {
@@ -757,6 +762,7 @@ export const AppProvider: React.FC<{ children: ReactNode; userId: string }> = ({
         shiftDefinitions,
         setLanguage,
         setTheme,
+        setShiftRemindersEnabled,
         setUserRole,
         setActiveWorkerId,
         setActiveYearMonth,
