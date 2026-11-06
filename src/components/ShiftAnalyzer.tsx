@@ -10,14 +10,9 @@ import {
   Clock,
   Laptop,
   Building,
-  Info,
+  Users,
   X,
-  Sparkles,
   Save,
-  Moon,
-  Sun,
-  AlertCircle,
-  FileText,
   CheckCircle2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -26,6 +21,7 @@ import { DayShift, ShiftCategory } from '../types';
 import { categorizeCode } from '../utils/excelParser';
 import { sanitizeClonedDocForHtml2Canvas } from '../utils/html2canvasFix';
 import { normalizeWorkerName } from '../utils/workerImportMerge';
+import { buildUpcomingShiftPreviews, getLocalDateKey } from '../utils/shiftPairing';
 import {
   fromTimeInputValue,
   hasCustomShiftHours,
@@ -47,7 +43,6 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
     setActiveWorkerId,
     setActiveYearMonth,
     updateDayShift,
-    updateShiftDefinition,
     shiftDefinitions,
   } = useApp();
 
@@ -59,6 +54,28 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
   const [isExporting, setIsExporting] = useState(false);
   const [shareSuccessNotification, setShareSuccessNotification] = useState<string | null>(null);
   const [monthDirection, setMonthDirection] = useState<1 | -1>(1);
+  const [todayKey, setTodayKey] = useState(() => getLocalDateKey(new Date()));
+  const previewDismissalKey = activeWorker
+    ? `turnofly:shift-preview:${activeWorker.id}:${todayKey}`
+    : '';
+  const [isPreviewDismissed, setIsPreviewDismissed] = useState(() => {
+    if (!previewDismissalKey) return false;
+    try {
+      return localStorage.getItem(previewDismissalKey) === 'dismissed';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timer = window.setTimeout(
+      () => setTodayKey(getLocalDateKey(new Date())),
+      Math.max(1, nextMidnight.getTime() - now.getTime())
+    );
+    return () => window.clearTimeout(timer);
+  }, [todayKey]);
 
   // Edit Single Day Shift Modal State
   const [editCode, setEditCode] = useState<string>('M');
@@ -68,41 +85,6 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
   const [editIsWorkDay, setEditIsWorkDay] = useState<boolean>(true);
   const [editIsRemote, setEditIsRemote] = useState<boolean>(false);
   const [editNotes, setEditNotes] = useState<string>('');
-
-  // Edit Shift Code Definition Legend Modal State
-  const [editingLegendCode, setEditingLegendCode] = useState<string | null>(null);
-  const [legendName, setLegendName] = useState<string>('');
-  const [legendStartTime, setLegendStartTime] = useState<string>('07:00');
-  const [legendEndTime, setLegendEndTime] = useState<string>('15:00');
-  const [legendIsWorkDay, setLegendIsWorkDay] = useState<boolean>(true);
-  const [legendNotification, setLegendNotification] = useState<string | null>(null);
-
-  const handleOpenLegendEdit = (code: string) => {
-    const def = shiftDefinitions[code] || categorizeCode(code, shiftDefinitions);
-    setEditingLegendCode(code);
-    setLegendName(def.name);
-    setLegendStartTime(def.defaultStartTime || (def.isWorkDay ? '08:00' : ''));
-    setLegendEndTime(def.defaultEndTime || (def.isWorkDay ? '16:00' : ''));
-    setLegendIsWorkDay(def.isWorkDay);
-  };
-
-  const handleSaveLegendEdit = () => {
-    if (!editingLegendCode) return;
-    updateShiftDefinition(
-      editingLegendCode,
-      legendStartTime,
-      legendEndTime,
-      legendIsWorkDay,
-      legendName
-    );
-    setLegendNotification(
-      `¡Horario del turno "${editingLegendCode}" actualizado a ${legendStartTime || 'Libre'} - ${legendEndTime || 'Libre'} en toda la planilla!`
-    );
-    setEditingLegendCode(null);
-    setTimeout(() => {
-      setLegendNotification(null);
-    }, 5000);
-  };
 
   const daysInMonth = new Date(activeYear, activeMonth, 0).getDate();
   const firstDayOfWeek = (new Date(activeYear, activeMonth - 1, 1).getDay() + 6) % 7; // 0 = Mon, 6 = Sun
@@ -150,6 +132,34 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
       };
     });
   }, [activeWorker?.shifts, activePeriodPrefix, shiftDefinitions, lang]);
+
+  const upcomingShiftPreviews = useMemo(
+    () => buildUpcomingShiftPreviews(activeWorker, workers, shiftDefinitions, todayKey),
+    [activeWorker, workers, shiftDefinitions, todayKey]
+  );
+
+  useEffect(() => {
+    if (!previewDismissalKey) {
+      setIsPreviewDismissed(false);
+      return;
+    }
+    try {
+      setIsPreviewDismissed(localStorage.getItem(previewDismissalKey) === 'dismissed');
+    } catch {
+      setIsPreviewDismissed(false);
+    }
+  }, [previewDismissalKey]);
+
+  const dismissUpcomingShiftPreview = () => {
+    if (previewDismissalKey) {
+      try {
+        localStorage.setItem(previewDismissalKey, 'dismissed');
+      } catch {
+        // Keep the close action usable when browser storage is unavailable.
+      }
+    }
+    setIsPreviewDismissed(true);
+  };
 
   const goToPeriod = (year: number, month: number) => {
     const periodPrefix = `${year}-${String(month).padStart(2, '0')}-`;
@@ -508,6 +518,69 @@ export const ShiftAnalyzer: React.FC<ShiftAnalyzerProps> = ({ onOpenShareModal }
           </motion.div>
         </div>
       </motion.section>
+
+      <AnimatePresence initial={false}>
+        {upcomingShiftPreviews.length > 0 && !isPreviewDismissed && (
+          <motion.aside
+            key={previewDismissalKey || 'upcoming-shifts'}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+            aria-label={lang === 'en' ? 'Next shift coworker summary' : lang === 'pt' ? 'Resumo de colegas do próximo turno' : 'Resumen de compañeros de la próxima jornada'}
+            className="relative overflow-hidden rounded-2xl border border-indigo-200/80 bg-white/90 px-3 py-2 shadow-sm dark:border-indigo-900/70 dark:bg-slate-900/95 sm:px-3"
+          >
+            <button
+              type="button"
+              onClick={dismissUpcomingShiftPreview}
+              aria-label={lang === 'en' ? 'Close shift summary for today' : lang === 'pt' ? 'Fechar resumo de hoje' : 'Cerrar resumen de hoy'}
+              title={lang === 'en' ? 'Close for today' : lang === 'pt' ? 'Fechar por hoje' : 'Cerrar por hoy'}
+              className="absolute right-1.5 top-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {upcomingShiftPreviews.map((preview) => {
+                const previewDate = new Date(`${preview.date}T12:00:00`);
+                const locale = lang === 'en' ? 'en-US' : lang === 'pt' ? 'pt-BR' : 'es-CL';
+                const formattedDate = new Intl.DateTimeFormat(locale, {
+                  weekday: 'short', day: 'numeric', month: 'short',
+                }).format(previewDate);
+                return (
+                  <div key={`${preview.date}-${preview.code}`} className="py-1 first:pt-0 last:pb-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 text-[10px] font-bold text-indigo-600 dark:text-indigo-300">
+                        {formattedDate}
+                      </span>
+                      <span className="text-xs font-black text-slate-900 dark:text-white">{preview.code}</span>
+                    </div>
+                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] leading-tight text-slate-600 dark:text-slate-300">
+                      <Users className="h-3 w-3 shrink-0 text-indigo-500 dark:text-indigo-300" />
+                      <span className="min-w-0 truncate">
+                        {preview.coworkers.length > 0
+                          ? `${lang === 'en' ? 'With' : lang === 'pt' ? 'Com' : 'Con'} ${preview.coworkers.map((coworker) => coworker.name).join(', ')}`
+                          : preview.excludedFromPairing
+                            ? lang === 'en'
+                              ? 'Administrative shift · coworker matching skipped'
+                              : lang === 'pt'
+                                ? 'Turno administrativo · sem busca de colega'
+                                : 'Turno administrativo · no se buscan compañeros'
+                            : preview.compatibleCodes.length > 0
+                            ? lang === 'en'
+                              ? `No roster profile with ${preview.compatibleCodes.join('/')} on this date`
+                              : lang === 'pt'
+                                ? `Nenhum profissional com ${preview.compatibleCodes.join('/')} nesta data`
+                                : `No aparece un perfil con ${preview.compatibleCodes.join('/')} ese día`
+                            : lang === 'en' ? 'No compatible shift rule configured' : lang === 'pt' ? 'Sem regra de turno compatível' : 'Sin regla de turno compatible configurada'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
 
       {/* Main Calendar View Container - Fits Single Phone Screen */}
       <div
